@@ -1,0 +1,61 @@
+# global file exclude list using multi-line regex, see https://pre-commit.com/#regular-expressions
+# exclude: >
+#     (?x)^(
+#         some_file.txt
+#     )$
+
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.0.1
+  hooks:
+  - id: trailing-whitespace
+  - id: end-of-file-fixer
+    exclude: 'setup.cfg' # because of https://github.com/c4urself/bump2version/issues/58
+  - id: check-json
+  - id: check-xml
+  - id: check-yaml
+  - id: check-added-large-files
+  - id: check-executables-have-shebangs
+
+- repo: https://github.com/Lucas-C/pre-commit-hooks
+  rev: v1.1.10
+  hooks:
+  - id: remove-crlf
+  - id: forbid-tabs
+
+- repo: https://github.com/ambv/black
+  rev: 21.6b0
+  hooks:
+  - id: black
+    language_version: python3
+    # setup via pyproject.toml file
+
+- repo: https://github.com/timothycrosley/isort
+  rev: "5.9.2"
+  hooks:
+  - id: isort
+    language: python
+    language_version: python3
+    additional_dependencies: ["toml"]
+    # setup via pyproject.toml file
+
+- repo: https://github.com/pycqa/pylint
+  rev: v2.9.3
+  hooks:
+  - id: pylint
+    language: python
+    language_version: python3
+    additional_dependencies: ["toml"]  # install toml to get around verbose error messages in combination with isort
+    # setup via pyproject.toml file
+
+- repo: local
+  hooks:
+    - id: check-version-synced
+      name: check version strings are synced
+      entry: bump2version
+      language: python
+      language_version: python3
+      args: ["--dry-run", "--allow-dirty", "patch"]  # simulate a version-bump
+      always_run: True
+      pass_filenames: False
+      additional_dependencies: ["bump2version==1.0.1"]

@@ -1,0 +1,79 @@
+[tool.black]
+line-length = 120
+
+[tool.isort]
+line_length = 120
+float_to_top = true
+force_alphabetical_sort = true
+force_to_top = "__future__"
+profile = "black"
+
+[tool.pylint.master]
+jobs=0
+
+[tool.pylint.message_control]
+# only give us the severe stuff
+disable=[
+    "C",
+    "R",
+    "fixme",
+    "import-error",
+    "no-name-in-module"
+]
+enable=[
+    "cyclic-import",
+    "useless-object-inheritance"
+]
+reports="no"
+score="no"
+
+[tool.pylint.format]
+max-line-length=120
+
+[tool.pylint.logging]
+# 'old' means using '%'-formatting, while 'new' is for '{}'-formatting.
+logging-format-style="old"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--no-cov-on-fail --cov=src"
+testpaths = ["test"]
+
+
+[tool.poetry]
+name = "pytf3d"
+version = "0.0.0"
+description = "a lightweight library for handling rigid body transformations in 3D"
+authors = ["Xaver Kroischke <xk.coding@gmail.com>"]
+maintainers = ["Xaver Kroischke <xk.coding@gmail.com>"]
+license = "MPL-2.0"
+packages = [
+    { include = "pytf3d", from = "src" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.6.1"
+hypothesis = {version = "^6.14", optional = true}
+numpy = "^1.19"
+
+[tool.poetry.extras]
+testing = ["hypothesis"]
+
+[tool.poetry.dev-dependencies]
+hypothesis = "^6.14"
+pytest = "^6.2"
+pytest-cov = "^2.12"
+pre-commit = "^2.13"
+bump2version = "^1.0.1"
+# see .pre-commit-config.yaml for remaining tools
+
+
+[tool.coverage.run]
+branch = true
+source = ["./src"]
+concurrency = ["thread", "multiprocessing"]
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,23 @@
+# python bytecode
+*__pycache__*
+*.pyc
+
+# python package building
+.cache/*
+.eggs/*
+*egg-info*
+
+# testing
+.coverage*
+.hypothesis*
+.pytest_cache/*
+
+# IDE project files
+.idea/*
+.vscode/*
+*.project
+*.cproject
+*.venv
+
+# git merge remainders
+*.orig

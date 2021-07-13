@@ -1,0 +1,19 @@
+include:
+  - project: 'tools/gitlab_ci/pre-commit_ci_templates'
+    ref: 'stable'
+    file: '/pipelines.yaml'
+  - project: 'tools/gitlab_ci/python_ci_templates'
+    ref: 'stable'
+    file: '/poetry_pipelines.yaml'
+
+# run pre-commit hooks
+check_pre-commit:
+  extends: .check-pre-commit
+
+# run tests
+#build_image_for_test:
+#  extends: .build_poetry_image_with_dependencies
+#  variables:
+#    BASE_IMAGE: python:3.6-buster
+#run_pytest:
+#  extends: .run_pytest_on_poetry_image
