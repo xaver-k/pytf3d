@@ -11,6 +11,7 @@
 .coverage*
 .hypothesis*
 .pytest_cache/*
+htmlcov
 
 # IDE project files
 .idea/*
