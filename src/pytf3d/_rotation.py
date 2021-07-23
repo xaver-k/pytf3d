@@ -1,5 +1,13 @@
 from enum import auto, Enum, unique
-from pytf3d.typing import ARRAY_LIKE_1D_T, QUATERNION_T, UNIT_QUATERNION_T
+from pytf3d.typing import (
+    ARRAY_LIKE_1D_T,
+    ARRAY_LIKE_2D_T,
+    HOMOGENEOUS_MATRIX_T,
+    QUATERNION_T,
+    ROTATION_MATRIX_T,
+    UNIT_QUATERNION_T,
+)
+from pytf3d.utils import is_rotation_matrix
 from typing import Sequence, Union
 
 import numpy as np
@@ -68,8 +76,69 @@ class Rotation:
         raise NotImplementedError()
 
     @classmethod
-    def from_matrix(cls, matrix: np.ndarray) -> "Rotation":
-        raise NotImplementedError()
+    def from_matrix(cls, matrix: Union[ROTATION_MATRIX_T, HOMOGENEOUS_MATRIX_T, ARRAY_LIKE_2D_T]) -> "Rotation":
+        """
+        factory to construct a Rotation from matrix input
+
+        uses Shepperd's method:
+        S.W. Sheppard, “Quaternion from rotation matrix,” Journal of Guidance and Control,
+        Vol. 1, No. 3, pp. 223-224, 1978
+
+        :param matrix: 3x3 rotation matrix or 4x4 homogeneous transformation matrix (of which only the rotation-part
+                       will be used)
+        """
+        # todo: skipping of check for proper rotation matrix via flag?
+        # todo: see https://upcommons.upc.edu/bitstream/handle/2117/178326/2083-A-Survey-on-the-Computation-of-Quaternions-from-Rotation-Matrices.pdf
+        #       for other, better methods?
+        m: np.ndarray = np.asanyarray(matrix, dtype=np.float64).squeeze()
+        if m.shape not in {(3, 3), (4, 4)}:
+            raise ValueError(f"Bad input shape, expected 3x3 or 4x4 (after squeezing, but gut {m.shape} instead.")
+        if not is_rotation_matrix(m[:3, :3]):
+            raise ValueError(f"Input matrix does not describe a proper rotation: {matrix}")
+
+        trace = np.trace(m[:3, :3])
+        if trace > 0:
+            w = 0.5 * np.sqrt(1 + trace)
+            c = 0.25 * w
+            return Rotation(
+                [
+                    w,
+                    c * (m[2, 1] - m[1, 2]),
+                    c * (m[0, 2] - m[2, 0]),
+                    c * (m[1, 0] - m[0, 1]),
+                ],
+            )
+
+        if m[0, 0] > m[1, 1] and m[0, 0] > m[2, 2]:
+            c = 0.5 / np.sqrt(1.0 + m[0, 0] - m[1, 1] - m[2, 2])
+            return Rotation(
+                [
+                    c * (m[2, 1] - m[1, 2]),
+                    0.25 / c,
+                    c * (m[0, 1] + m[1, 0]),
+                    c * (m[0, 2] + m[2, 0]),
+                ]
+            )
+        if m[1, 1] > m[2, 2]:
+            c = 0.5 / np.sqrt(1.0 - m[0, 0] + m[1, 1] - m[2, 2])
+            return Rotation(
+                [
+                    c * (m[0, 2] - m[2, 0]),
+                    c * (m[0, 1] + m[1, 0]),
+                    0.25 / c,
+                    c * (m[1, 2] + m[2, 1]),
+                ]
+            )
+
+        c = 0.5 / np.sqrt(1.0 - m[0, 0] - m[1, 1] + m[2, 2])
+        return Rotation(
+            [
+                c * (m[1, 0] - m[0, 1]),
+                c * (m[0, 2] + m[2, 0]),
+                c * (m[1, 2] + m[2, 1]),
+                0.25 / c,
+            ]
+        )
 
     @classmethod
     def from_euler(cls, euler_angles: Sequence[float], axes: str) -> "Rotation":
@@ -83,10 +152,44 @@ class Rotation:
     def from_eea(cls, eea: Sequence[float]) -> "Rotation":
         raise NotImplementedError()
 
-    def as_matrix(self, to_homogeneous_matrix: bool = False) -> np.ndarray:
-        raise NotImplementedError()
+    # todo: testing -> matrix shape, homog. matrix last rows, columns, rotation matrix properties, there and back again
+    #   check identity, check certain examples
+    def as_matrix(self, to_homogeneous_matrix: bool = False) -> Union[ROTATION_MATRIX_T, HOMOGENEOUS_MATRIX_T]:
+        # todo: doc
+        # see https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Quaternion-derived_rotation_matrix
+        w, x, y, z = self._q
 
-    def as_quaternion(self, q_order: QuaternionOrder = QuaternionOrder.WXYZ) -> np.ndarray:
+        # shortcut for identity
+        if np.isclose(w, 1, rtol=0, atol=QUATERNION_TOLERANCE):
+            if to_homogeneous_matrix:
+                return np.eye(4)
+            else:
+                return np.eye(3)
+
+        wx = 2 * w * x
+        wy = 2 * w * y
+        wz = 2 * w * z
+        xx = 2 * x * x
+        xy = 2 * x * y
+        xz = 2 * x * z
+        yy = 2 * y * y
+        yz = 2 * y * z
+        zz = 2 * z * z
+        r_matrix = np.array(
+            [
+                [1.0 - (yy + zz), xy - wz, xz + wy],
+                [xy + wz, 1.0 - (xx + zz), yz - wx],
+                [xz - wy, yz + wx, 1.0 - (xx + yy)],
+            ]
+        )
+
+        if not to_homogeneous_matrix:
+            return r_matrix
+        h_matrix = np.eye(4)
+        h_matrix[:3, :3] = r_matrix
+        return h_matrix
+
+    def as_quaternion(self, q_order: QuaternionOrder = QuaternionOrder.WXYZ) -> UNIT_QUATERNION_T:
         if q_order == QuaternionOrder.XYZW:
             return _wxyz_to_xyzw(self._q)
         return self._q
