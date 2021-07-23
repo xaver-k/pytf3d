@@ -208,10 +208,11 @@ class Rotation:
         inverse_q[0] *= -1.0
         return Rotation(inverse_q)
 
-    def almost_equal(self, other: "Rotation") -> bool:
+    def almost_equal(self, other: "Rotation", eps: float = 1e-6) -> bool:
         """
-        check if two rotations are equal within tolerance
+        check if two Rotation objects represent the same rotation within tolerance
         """
-        # do not need to consider quaternion eqality of q and -q, because constructor ensures that the w-component is
-        # always positive
-        return np.allclose(self._q, other.as_quaternion())
+        # Check for cosine similarity between 4D-vectors (and keep in mind that q and -q are the same rotation).
+        # This behaves numerically more stable than component-wise comparison.
+        # See https://gamedev.stackexchange.com/a/75108 for more info.
+        return np.abs(np.dot(self._q, other.as_quaternion())) - 1.0 <= eps
