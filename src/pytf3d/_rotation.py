@@ -1,5 +1,6 @@
 from enum import auto, Enum, unique
-from typing import Sequence
+from pytf3d.typing import ARRAY_LIKE_1D_T, QUATERNION_T, UNIT_QUATERNION_T
+from typing import Sequence, Union
 
 import numpy as np
 
@@ -25,14 +26,15 @@ class Rotation:
     3D rigid body rotation
     """
 
-    def __init__(self, q: Sequence[float], q_order: QuaternionOrder = QuaternionOrder.WXYZ):
+    def __init__(self, q: Union[QUATERNION_T, ARRAY_LIKE_1D_T], q_order: QuaternionOrder = QuaternionOrder.WXYZ):
         """
         :param q: quaternion values describing the desired rotation;
-                  dimension 4 (but passing extra empty axes is possible, they will be squeezed out)
+                  * 4-dimensional (but passing extra empty axes is possible, they will be squeezed out)
+                  * will be normalized internally
         :param q_order: ordering of quaternion values in q
         """
 
-        q_ = np.asarray(q, np.float).squeeze()
+        q_: QUATERNION_T = np.asarray(q, np.float64).squeeze()
 
         if q_.shape != (4,):
             raise ValueError(f"Not a valid quaternion shape ({q_.shape}) from input: {q}")
@@ -48,15 +50,15 @@ class Rotation:
         q_norm = np.linalg.norm(q_)
         if np.isclose(q_norm, 0, rtol=0.0, atol=QUATERNION_TOLERANCE):
             raise ValueError(f"Input quaternion has zero length (within tolerance): {q}.")
-        self._q = q_ / q_norm
+        self._q: UNIT_QUATERNION_T = q_ / q_norm
 
     def __repr__(self) -> str:
-        return "Rotation({:.3f} | {:.3f}, {:.3f}, {:.3f})".format(*self._q)
+        return "Rotation({:.8f} | {:.8f}, {:.8f}, {:.8f})".format(*self._q)
 
     def __matmul__(self, other: "Rotation") -> "Rotation":
         raise NotImplementedError()
 
-    def __pow__(self, power, modulo=None):
+    def __pow__(self, power, modulo=None) -> "Rotation":
         raise NotImplementedError()
 
     def random(self, random_state) -> "Rotation":
