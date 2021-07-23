@@ -47,8 +47,24 @@ description = "a lightweight library for handling rigid body transformations in 
 authors = ["Xaver Kroischke <xk.coding@gmail.com>"]
 maintainers = ["Xaver Kroischke <xk.coding@gmail.com>"]
 license = "MPL-2.0"
+readme = "README.md"
 packages = [
     { include = "pytf3d", from = "src" },
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Utilities",
 ]
 
 [tool.poetry.dependencies]
