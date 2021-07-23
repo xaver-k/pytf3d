@@ -36,7 +36,7 @@ logging-format-style="old"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "--no-cov-on-fail --cov=src"
+addopts = "--no-cov-on-fail --cov=src --cov=test"
 testpaths = ["test"]
 
 
@@ -70,7 +70,6 @@ bump2version = "^1.0.1"
 
 [tool.coverage.run]
 branch = true
-source = ["./src"]
 concurrency = ["thread", "multiprocessing"]
 
 
