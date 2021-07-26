@@ -12,6 +12,7 @@ from pytf3d.testing import QuaternionStrategy, RotationStrategy
 from pytf3d.utils import is_homogeneous_matrix, is_rotation_matrix
 from typing import Any, Type
 
+import hypothesis
 import hypothesis.strategies as st
 import numpy as np
 import pytest
@@ -151,8 +152,16 @@ def test_as_angle_axis(r: Rotation):
     assert np.isclose(np.linalg.norm(axis), 1)
 
 
-@given(r=RotationStrategy)
-def test_angle_axis_round_trip(r: Rotation):
+@given(r=RotationStrategy, axis_factor=st.floats(allow_nan=False, allow_infinity=False))
+def test_angle_axis_round_trip(r: Rotation, axis_factor: float):
+    hypothesis.assume(not np.isclose(axis_factor, 0, rtol=0))
     angle, axis = r.as_angle_axis()
-    r_restored = Rotation.from_angle_axis(angle, axis)
+    r_restored = Rotation.from_angle_axis(angle, axis_factor * axis)  # scaling axis should give the same result
     assert r.almost_equal(r_restored), f"round trip failed, intermediate representation:\nangle:{angle}\naxis:{axis}"
+
+
+@given(r=RotationStrategy)
+def test_rotation_vector_round_trip(r: Rotation):
+    rvec = r.as_rotation_vector()
+    r_restored = Rotation.from_rotation_vector(rvec)
+    assert r.almost_equal(r_restored), f"round trip failed, intermediate representation:\n{rvec}"

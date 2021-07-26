@@ -176,15 +176,31 @@ class Rotation:
         return Rotation((w, s * unit_vector[0], s * unit_vector[1], s * unit_vector[2]))
 
     @classmethod
+    def from_rotation_vector(cls, rotation_vector: Union[VECTOR_T, ARRAY_LIKE_1D_T]) -> "Rotation":
+        """
+        factory to construct a rotation form a rotation vector (sometimes also called Euler vector or
+        equal-angle-axis-representation)
+
+        :param rotation_vector: shape (3,) rotation vector
+        """
+        rvec: np.asarray = np.asarray(rotation_vector, dtype=np.float64).squeeze()
+        if rvec.shape != (3,):
+            raise ValueError(
+                f"Bad input shape for equal angle axis, expected shape (3,) after squeezing. Input: {rotation_vector}"
+            )
+
+        angle = float(np.linalg.norm(rvec))
+        if np.isclose(angle, 0, rtol=0.0):
+            return cls.from_angle_axis(angle, [1, 0, 0])
+        else:
+            return cls.from_angle_axis(angle, rvec)  # axis does not need to be normalized, so a factor of angle is fine
+
+    @classmethod
     def from_euler(cls, euler_angles: Sequence[float], axes: str) -> "Rotation":
         raise NotImplementedError()
 
     @classmethod
     def from_rpy(cls, rpy: Sequence[float]) -> "Rotation":
-        raise NotImplementedError()
-
-    @classmethod
-    def from_eea(cls, eea: Sequence[float]) -> "Rotation":
         raise NotImplementedError()
 
     # todo: testing -> matrix shape, homog. matrix last rows, columns, rotation matrix properties, there and back again
@@ -244,13 +260,18 @@ class Rotation:
 
         return angle, axis
 
+    def as_rotation_vector(self) -> VECTOR_T:
+        """
+        return the rotation vector representation (sometimes also called Euler vector or equal-angle-axis-representation)
+        describing the given rotation
+        """
+        angle, axis = self.as_angle_axis()
+        return angle * axis
+
     def as_euler(self, axes: str) -> np.ndarray:
         raise NotImplementedError()
 
     def as_rpy(self) -> np.ndarray:
-        raise NotImplementedError()
-
-    def as_eaa(self) -> np.ndarray:
         raise NotImplementedError()
 
     def inverse(self) -> "Rotation":
