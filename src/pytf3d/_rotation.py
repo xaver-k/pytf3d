@@ -166,13 +166,13 @@ class Rotation:
         if axis_.shape != (3,):
             raise ValueError(f"Bad input shape for rotation axis, expected shape (3,) after squeezing. Input: {axis}")
 
-        axis_norm = np.linalg.norm(axis)
+        axis_norm = np.linalg.norm(axis_)
         if np.isclose(axis_norm, 0, rtol=0.0):
             raise ValueError(f"Rotation axis must not be of (close to) zero length. Input: {axis}")
 
         s = np.sin(angle / 2)
         w = np.cos(angle / 2)
-        unit_vector = axis / axis_norm
+        unit_vector = axis_ / axis_norm
         return Rotation((w, s * unit_vector[0], s * unit_vector[1], s * unit_vector[2]))
 
     @classmethod
