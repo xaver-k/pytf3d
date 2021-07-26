@@ -84,6 +84,10 @@ class Rotation:
     def slerp(self):
         raise NotImplementedError()
 
+    @staticmethod
+    def identity() -> "Rotation":
+        return Rotation([1, 0, 0, 0])
+
     @classmethod
     def from_matrix(cls, matrix: Union[ROTATION_MATRIX_T, HOMOGENEOUS_MATRIX_T, ARRAY_LIKE_2D_T]) -> "Rotation":
         """
