@@ -64,7 +64,7 @@ def test_instantiation_with_invalid_values(
         [np.diagflat([-1, -1, 1]), Rotation([0, 0, 0, 1])],
         [np.diagflat([-1, -1, 1]).astype(np.int64), Rotation([0, 0, 0, 1])],
         [np.diagflat([-1, -1, 1]).astype(np.float32), Rotation([0, 0, 0, 1])],
-        [np.diagflat([1, 1, 1, 1]), Rotation([1, 0, 0, 0])],  # homogeneous matrix input
+        [np.diagflat([1, 1, 1, 1]), Rotation.identity()],  # homogeneous matrix input
     ],
 )
 def test_from_matrix_valid_input(matrix: np.ndarray, expected: Rotation):
@@ -86,9 +86,8 @@ def test_from_matrix_invalid_input(matrix: np.ndarray, expected_error: Type[Exce
 
 
 @given(r=RotationStrategy, homogeneous_matrix=st.booleans())
-@example(r=Rotation([1, 0, 0, 0]), homogeneous_matrix=True)
+@example(r=Rotation.identity(), homogeneous_matrix=True)
 def test_as_matrix(r: Rotation, homogeneous_matrix: bool):
-    print(homogeneous_matrix)
     matrix = r.as_matrix(homogeneous_matrix)
     if homogeneous_matrix:
         assert is_homogeneous_matrix(matrix)
@@ -106,7 +105,7 @@ def test_rotation_matrix_round_trip(r: Rotation, homogeneous_matrix: bool):
 @mark.parametrize(
     ["angle", "axis", "expected"],
     [
-        [0, [1, 0, 0], Rotation([1, 0, 0, 0])],
+        [0, [1, 0, 0], Rotation.identity()],
         [np.pi, [1, 0, 0], Rotation([0, 1, 0, 0])],
         [np.pi, [0, 1, 0], Rotation([0, 0, 1, 0])],
         [np.pi, [0, 0, 1], Rotation([0, 0, 0, 1])],
@@ -141,7 +140,7 @@ def test_from_angle_axis_invalid_input(
 
 
 @given(r=RotationStrategy)
-@example(r=Rotation([1, 0, 0, 0]))
+@example(r=Rotation.identity())
 def test_as_angle_axis(r: Rotation):
     angle, axis = r.as_angle_axis()
 
