@@ -101,3 +101,59 @@ def test_rotation_matrix_round_trip(r: Rotation, homogeneous_matrix: bool):
     matrix = r.as_matrix(to_homogeneous_matrix=homogeneous_matrix)
     r_restored = Rotation.from_matrix(matrix)
     assert r.almost_equal(r_restored), f"round trip failed, intermediate matrix:\n{matrix}"
+
+
+@mark.parametrize(
+    ["angle", "axis", "expected"],
+    [
+        [0, [1, 0, 0], Rotation([1, 0, 0, 0])],
+        [np.pi, [1, 0, 0], Rotation([0, 1, 0, 0])],
+        [np.pi, [0, 1, 0], Rotation([0, 0, 1, 0])],
+        [np.pi, [0, 0, 1], Rotation([0, 0, 0, 1])],
+        [-np.pi, [1, 0, 0], Rotation([0, 1, 0, 0])],
+        [np.pi, [2, 0, 0], Rotation([0, 1, 0, 0])],
+        [np.pi, [0.5, 0, 0], Rotation([0, 1, 0, 0])],
+        [3 * np.pi, [1, 0, 0], Rotation([0, 1, 0, 0])],
+        [np.pi / 2, [1, 0, 0], Rotation([1 / np.sqrt(2), 1 / np.sqrt(2), 0, 0])],
+    ],
+)
+def test_from_angle_axis_valid_input(angle: float, axis: np.ndarray, expected: Rotation):
+    r = Rotation.from_angle_axis(angle, axis)
+    assert expected.almost_equal(r)
+
+
+@mark.parametrize(
+    ["angle", "axis", "expected_error", "error_regex"],
+    [
+        [1, [1, 0], ValueError, r"Bad input shape"],
+        [1, [1, 0, 0, 0], ValueError, r"Bad input shape"],
+        [1, [1, 0, 0, 0], ValueError, r"Bad input shape"],
+        [1, ["a", "b", "c"], ValueError, r"could not convert .*? to float"],  # not a valid data type
+        [1, [0, 0, 0], ValueError, r"zero length"],
+        [1, [0, 0, 1e-10], ValueError, r"zero length"],
+    ],
+)
+def test_from_angle_axis_invalid_input(
+    angle: float, axis: np.ndarray, expected_error: Type[Exception], error_regex: re.Pattern
+):
+    with pytest.raises(expected_error, match=error_regex):
+        _ = Rotation.from_angle_axis(angle, axis)
+
+
+@given(r=RotationStrategy)
+@example(r=Rotation([1, 0, 0, 0]))
+def test_as_angle_axis(r: Rotation):
+    angle, axis = r.as_angle_axis()
+
+    assert isinstance(angle, float)
+    assert 0 <= angle <= np.pi
+
+    assert axis.shape == (3,)
+    assert np.isclose(np.linalg.norm(axis), 1)
+
+
+@given(r=RotationStrategy)
+def test_angle_axis_round_trip(r: Rotation):
+    angle, axis = r.as_angle_axis()
+    r_restored = Rotation.from_angle_axis(angle, axis)
+    assert r.almost_equal(r_restored), f"round trip failed, intermediate representation:\nangle:{angle}\naxis:{axis}"

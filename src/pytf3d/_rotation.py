@@ -13,9 +13,11 @@ from pytf3d.typing import (
     QUATERNION_T,
     ROTATION_MATRIX_T,
     UNIT_QUATERNION_T,
+    UNIT_VECTOR_T,
+    VECTOR_T,
 )
 from pytf3d.utils import is_rotation_matrix
-from typing import Sequence, Union
+from typing import Sequence, Tuple, Union
 
 import numpy as np
 
@@ -148,6 +150,28 @@ class Rotation:
         )
 
     @classmethod
+    def from_angle_axis(cls, angle: float, axis: Union[VECTOR_T, ARRAY_LIKE_1D_T]) -> "Rotation":
+        """
+        factory to construct a rotation form axis-angle input
+
+        :param angle: rotation angle in radian
+        :param axis: shape (3,) 3D axis to rotate around, will be normalized internally but must not be of length 0
+        """
+
+        axis_: np.asarray = np.asarray(axis, dtype=np.float64).squeeze()
+        if axis_.shape != (3,):
+            raise ValueError(f"Bad input shape for rotation axis, expected shape (3,) after squeezing. Input: {axis}")
+
+        axis_norm = np.linalg.norm(axis)
+        if np.isclose(axis_norm, 0, rtol=0.0):
+            raise ValueError(f"Rotation axis must not be of (close to) zero length. Input: {axis}")
+
+        s = np.sin(angle / 2)
+        w = np.cos(angle / 2)
+        unit_vector = axis / axis_norm
+        return Rotation((w, s * unit_vector[0], s * unit_vector[1], s * unit_vector[2]))
+
+    @classmethod
     def from_euler(cls, euler_angles: Sequence[float], axes: str) -> "Rotation":
         raise NotImplementedError()
 
@@ -200,6 +224,21 @@ class Rotation:
         if q_order == QuaternionOrder.XYZW:
             return _wxyz_to_xyzw(self._q)
         return self._q
+
+    def as_angle_axis(self) -> Tuple[float, UNIT_VECTOR_T]:
+        """
+        return the scalar rotation angle and 3D rotation axis describing the given rotation
+
+        :return: (angle, axis) with angle in [0, pi] and axis as a unit-vector
+        """
+        w = self._q[0]
+        angle = float(2 * np.arccos(w))
+        if np.isclose(w, 1, rtol=0):
+            axis = np.array([1, 0, 0], dtype=np.float64)
+        else:
+            axis = self._q[1:] / np.sqrt(1 - w ** 2)
+
+        return angle, axis
 
     def as_euler(self, axes: str) -> np.ndarray:
         raise NotImplementedError()
