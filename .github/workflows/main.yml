@@ -30,9 +30,7 @@ jobs:
         run: python -c "import sys; print(sys.version)"
       - name: install and configure poetry
         shell: bash
-        run: |
-          pip install poetry
-          export POETRY_VIRTUALENVS_IN_PROJECT=true
+        run: pip install poetry
       - name: install project dependencies
         shell: bash
         run: |
