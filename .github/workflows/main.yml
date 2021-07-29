@@ -23,17 +23,21 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
       - name: install and configure poetry
         shell: bash
         run: |
           pip install poetry
           export POETRY_VIRTUALENVS_IN_PROJECT=true
-          poetry install --remove-untracked
-          poetry run pytest
       - name: install project dependencies
         shell: bash
         run: |
           poetry install --remove-untracked
+          poetry env info
       - name: run tests
         shell: bash
         run: |
