@@ -38,3 +38,9 @@ jobs:
         shell: bash
         run: |
           poetry run pytest
+          poetry run coverage xml
+      - name: Report Coverage
+        uses: codecov/codecov-action@v2
+        with:
+          fail_ci_if_error: true
+          verbose: true

@@ -12,6 +12,7 @@
 .hypothesis*
 .pytest_cache/*
 htmlcov
+coverage.xml
 
 # IDE project files
 .idea/*
