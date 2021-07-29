@@ -17,7 +17,7 @@ from pytf3d.typing import (
     VECTOR_T,
 )
 from pytf3d.utils import is_rotation_matrix
-from typing import Sequence, Tuple, Union
+from typing import Sequence, Set, Tuple, Union
 
 import numpy as np
 
@@ -52,9 +52,7 @@ class Rotation:
         """
 
         q_: QUATERNION_T = np.asarray(q, np.float64).squeeze()
-
-        if q_.shape != (4,):
-            raise ValueError(f"Not a valid quaternion shape ({q_.shape}) from input: {q}")
+        self._raise_if_not_expected_shape(q_, (4,))
 
         # quaternion values are stored internally with the following conventions:
         # * wxyz-order
@@ -104,8 +102,7 @@ class Rotation:
         # todo: see https://upcommons.upc.edu/bitstream/handle/2117/178326/2083-A-Survey-on-the-Computation-of-Quaternions-from-Rotation-Matrices.pdf
         #       for other, better methods?
         m: np.ndarray = np.asanyarray(matrix, dtype=np.float64).squeeze()
-        if m.shape not in {(3, 3), (4, 4)}:
-            raise ValueError(f"Bad input shape, expected 3x3 or 4x4 (after squeezing, but gut {m.shape} instead.")
+        cls._raise_if_not_expected_shape(m, {(3, 3), (4, 4)})
         if not is_rotation_matrix(m[:3, :3]):
             raise ValueError(f"Input matrix does not describe a proper rotation: {matrix}")
 
@@ -163,8 +160,7 @@ class Rotation:
         """
 
         axis_: np.asarray = np.asarray(axis, dtype=np.float64).squeeze()
-        if axis_.shape != (3,):
-            raise ValueError(f"Bad input shape for rotation axis, expected shape (3,) after squeezing. Input: {axis}")
+        cls._raise_if_not_expected_shape(axis_, (3,))
 
         axis_norm = np.linalg.norm(axis_)
         if np.isclose(axis_norm, 0, rtol=0.0):
@@ -175,6 +171,9 @@ class Rotation:
         unit_vector = axis_ / axis_norm
         return Rotation((w, s * unit_vector[0], s * unit_vector[1], s * unit_vector[2]))
 
+    # todo: refactor checks, reoccurring code
+    # todo: reject invalid inputs
+    # todo: unittests checking individual values
     @classmethod
     def from_rotation_vector(cls, rotation_vector: Union[VECTOR_T, ARRAY_LIKE_1D_T]) -> "Rotation":
         """
@@ -184,10 +183,7 @@ class Rotation:
         :param rotation_vector: shape (3,) rotation vector
         """
         rvec: np.asarray = np.asarray(rotation_vector, dtype=np.float64).squeeze()
-        if rvec.shape != (3,):
-            raise ValueError(
-                f"Bad input shape for equal angle axis, expected shape (3,) after squeezing. Input: {rotation_vector}"
-            )
+        cls._raise_if_not_expected_shape(rvec, (3,))
 
         angle = float(np.linalg.norm(rvec))
         if np.isclose(angle, 0, rtol=0.0):
@@ -287,3 +283,13 @@ class Rotation:
         # This behaves numerically more stable than component-wise comparison.
         # See https://gamedev.stackexchange.com/a/75108 for more info.
         return np.abs(np.dot(self._q, other.as_quaternion())) - 1.0 <= eps
+
+    @staticmethod
+    def _raise_if_not_expected_shape(a: np.ndarray, expected: Union[Tuple[int, ...], Set[Tuple[int, ...]]]) -> None:
+        if not isinstance(expected, set):
+            expected = {expected}
+        if a.shape not in expected:
+            expected_str = ", ".join(str(tupl) for tupl in sorted(list(expected)))
+            raise ValueError(
+                f"Bad input shape, expected one of {expected_str} (after squeezing), but got {a.shape} instead."
+            )
