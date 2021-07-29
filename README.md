@@ -1,6 +1,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/xaver-k/pytf3d/master.svg)](https://results.pre-commit.ci/latest/github/xaver-k/pytf3d/master)
 [![CI](https://github.com/xaver-k/pytf3d/actions/workflows/main.yml/badge.svg)](https://github.com/xaver-k/pytf3d/actions/workflows/main.yml)
+[![codecov](https://codecov.io/gh/xaver-k/pytf3d/branch/master/graph/badge.svg)](https://codecov.io/gh/xaver-k/pytf3d)
 
 # `pytf3d` - Python Transformations in 3D
 
