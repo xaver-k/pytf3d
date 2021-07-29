@@ -403,7 +403,7 @@ testing = ["hypothesis"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.1"
-content-hash = "a48925054a77e439735687bd14e2938a64fc2371a27d8546d303e5f8210acaf4"
+content-hash = "2e15c05e60cdcfab9873b541ca1cc5281da0273e634473ca84c888c930d19bdd"
 
 [metadata.files]
 atomicwrites = [
