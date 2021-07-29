@@ -26,7 +26,7 @@ jobs:
       - name: configure poetry and install dependencies
         run: |
           pip install poetry
-          export POETRY_VIRTUALENVS-IN_PROJECT=true
+          export POETRY_VIRTUALENVS_IN_PROJECT=true
           poetry install --remove-untracked
           poetry run pytest
         shell: bash
