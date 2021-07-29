@@ -159,7 +159,7 @@ class Rotation:
         :param axis: shape (3,) 3D axis to rotate around, will be normalized internally but must not be of length 0
         """
 
-        axis_: np.asarray = np.asarray(axis, dtype=np.float64).squeeze()
+        axis_: np.ndarray = np.asarray(axis, dtype=np.float64).squeeze()
         cls._raise_if_not_expected_shape(axis_, (3,))
 
         axis_norm = np.linalg.norm(axis_)
@@ -182,7 +182,7 @@ class Rotation:
 
         :param rotation_vector: shape (3,) rotation vector
         """
-        rvec: np.asarray = np.asarray(rotation_vector, dtype=np.float64).squeeze()
+        rvec: np.ndarray = np.asarray(rotation_vector, dtype=np.float64).squeeze()
         cls._raise_if_not_expected_shape(rvec, (3,))
 
         angle = float(np.linalg.norm(rvec))
