@@ -12,7 +12,6 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   ci:
     strategy:
@@ -46,3 +45,19 @@ jobs:
         with:
           fail_ci_if_error: true
           verbose: true
+
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: install poetry and project
+        shell: bash
+        run: |
+          pip install poetry
+          poetry install --remove-untracked
+      - name: run mypy
+        shell: bash
+        run: poetry run mypy .
