@@ -85,7 +85,7 @@ pytest-cov = "^2.12"
 pre-commit = "^2.13"
 bump2version = "^1.0.1"
 typing_extensions = {version = "^3.10", python = "^3.7"}
-mypy = {version = "^3.10", python = "^3.7"}
+mypy = {version = "^0.910", python = "^3.7"}
 
 # see .pre-commit-config.yaml for remaining tools
 
