@@ -9,6 +9,7 @@ from hypothesis import example, given
 from pytest import mark, raises
 from pytf3d import QuaternionOrder, Rotation
 from pytf3d.testing import QuaternionStrategy, RotationStrategy
+from pytf3d.typing import ARRAY_LIKE_1D_T
 from pytf3d.utils import is_homogeneous_matrix, is_rotation_matrix
 from typing import Any, Type
 
@@ -158,6 +159,35 @@ def test_angle_axis_round_trip(r: Rotation, axis_factor: float):
     angle, axis = r.as_angle_axis()
     r_restored = Rotation.from_angle_axis(angle, axis_factor * axis)  # scaling axis should give the same result
     assert r.almost_equal(r_restored), f"round trip failed, intermediate representation:\nangle:{angle}\naxis:{axis}"
+
+
+@mark.parametrize(
+    ["rvec", "expected"],
+    [
+        [[0, 0, 0], Rotation.identity()],
+        [[np.pi, 0, 0], Rotation([0, 1, 0, 0])],
+        [[np.pi / 2, 0, 0], Rotation([1 / np.sqrt(2), 1 / np.sqrt(2), 0, 0])],
+        [[-np.pi / 2, 0, 0], Rotation([1 / np.sqrt(2), -1 / np.sqrt(2), 0, 0])],
+        [[0, np.pi, 0], Rotation([0, 0, 1, 0])],
+        [[0, 0, np.pi], Rotation([0, 0, 0, 1])],
+    ],
+)
+def test_from_rotation_vector_valid_input(rvec: ARRAY_LIKE_1D_T, expected: Rotation):
+    r = Rotation.from_rotation_vector(rvec)
+    assert expected.almost_equal(r)
+
+
+@mark.parametrize(
+    ["rvec", "expected_error", "error_regex"],
+    [
+        [[1, 0], ValueError, r"Bad input shape"],
+        [[1, 0, 0, 0], ValueError, r"Bad input shape"],
+        [[[1, 1], [1, 1]], ValueError, r"Bad input shape"],
+    ],
+)
+def test_from_rotation_vector_invalid_input(rvec: Any, expected_error: Type[Exception], error_regex: re.Pattern):
+    with pytest.raises(expected_error, match=error_regex):
+        _ = Rotation.from_rotation_vector(rvec)
 
 
 @given(r=RotationStrategy)
