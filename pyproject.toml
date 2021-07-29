@@ -11,6 +11,12 @@ profile = "black"
 [tool.mypy]
 files = ["./src", "./test"]
 
+[tool.mpyp.pytf3d]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+warn_no_return = true
+
 [tool.pylint.master]
 jobs=0
 
