@@ -17,7 +17,6 @@ import hypothesis
 import hypothesis.strategies as st
 import numpy as np
 import pytest
-import re
 
 
 @given(
@@ -82,7 +81,7 @@ def test_from_matrix_valid_input(matrix: np.ndarray, expected: Rotation):
         [np.diagflat(["a", "b", "c"]), ValueError, r"could not convert .*? to float"],  # not a valid data type
     ],
 )
-def test_from_matrix_invalid_input(matrix: np.ndarray, expected_error: Type[Exception], error_regex: re.Pattern):
+def test_from_matrix_invalid_input(matrix: np.ndarray, expected_error: Type[Exception], error_regex: str):
     with pytest.raises(expected_error, match=error_regex):
         _ = Rotation.from_matrix(matrix)
 
@@ -135,7 +134,7 @@ def test_from_angle_axis_valid_input(angle: float, axis: np.ndarray, expected: R
     ],
 )
 def test_from_angle_axis_invalid_input(
-    angle: float, axis: np.ndarray, expected_error: Type[Exception], error_regex: re.Pattern
+    angle: float, axis: np.ndarray, expected_error: Type[Exception], error_regex: str
 ):
     with pytest.raises(expected_error, match=error_regex):
         _ = Rotation.from_angle_axis(angle, axis)
@@ -185,7 +184,7 @@ def test_from_rotation_vector_valid_input(rvec: ARRAY_LIKE_1D_T, expected: Rotat
         [[[1, 1], [1, 1]], ValueError, r"Bad input shape"],
     ],
 )
-def test_from_rotation_vector_invalid_input(rvec: Any, expected_error: Type[Exception], error_regex: re.Pattern):
+def test_from_rotation_vector_invalid_input(rvec: Any, expected_error: Type[Exception], error_regex: str):
     with pytest.raises(expected_error, match=error_regex):
         _ = Rotation.from_rotation_vector(rvec)
 
