@@ -60,4 +60,4 @@ jobs:
           poetry install --remove-untracked
       - name: run mypy
         shell: bash
-        run: poetry run mypy .
+        run: poetry run mypy

@@ -8,6 +8,9 @@ force_alphabetical_sort = true
 force_to_top = "__future__"
 profile = "black"
 
+[tool.mypy]
+files = ["./src", "./test"]
+
 [tool.pylint.master]
 jobs=0
 
