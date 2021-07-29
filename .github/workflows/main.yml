@@ -1,0 +1,63 @@
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+  # TODO: enable filters again
+  #  branches: [ master ]
+  #pull_request:
+  #  branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: install and configure poetry
+        shell: bash
+        run: pip install poetry
+      - name: install project dependencies
+        shell: bash
+        run: |
+          poetry install --remove-untracked
+          poetry env info
+      - name: run tests
+        shell: bash
+        run: |
+          poetry run pytest
+          poetry run coverage xml
+      - name: Report Coverage
+        uses: codecov/codecov-action@v2
+        with:
+          fail_ci_if_error: true
+          verbose: true
+
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: install poetry and project
+        shell: bash
+        run: |
+          pip install poetry
+          poetry install --remove-untracked
+      - name: run mypy
+        shell: bash
+        run: poetry run mypy
