@@ -9,9 +9,9 @@ from hypothesis import example, given
 from pytest import mark, raises
 from pytf3d import QuaternionOrder, Rotation
 from pytf3d.testing import QuaternionStrategy, RotationStrategy
-from pytf3d.typing import ARRAY_LIKE_1D_T
+from pytf3d.typing import ARRAY_LIKE_1D_T, HOMOGENEOUS_MATRIX_T, QUATERNION_T, ROTATION_MATRIX_T
 from pytf3d.utils import is_homogeneous_matrix, is_rotation_matrix
-from typing import Any, Type
+from typing import Any, Type, Union
 
 import hypothesis
 import hypothesis.strategies as st
@@ -25,7 +25,7 @@ import pytest
     quat_order_out=st.sampled_from(QuaternionOrder),
 )
 def test_instantiation_with_valid_values(
-    valid_quaterion, quat_order_in: QuaternionOrder, quat_order_out: QuaternionOrder
+    valid_quaterion: QUATERNION_T, quat_order_in: QuaternionOrder, quat_order_out: QuaternionOrder
 ):
     """
     smoke test trying to instantiate a rotation with valid values
@@ -68,7 +68,7 @@ def test_instantiation_with_invalid_values(
         [np.diagflat([1, 1, 1, 1]), Rotation.identity()],  # homogeneous matrix input
     ],
 )
-def test_from_matrix_valid_input(matrix: np.ndarray, expected: Rotation):
+def test_from_matrix_valid_input(matrix: Union[ROTATION_MATRIX_T, HOMOGENEOUS_MATRIX_T], expected: Rotation):
     r = Rotation.from_matrix(matrix)
     assert expected.almost_equal(r)
 
@@ -81,7 +81,7 @@ def test_from_matrix_valid_input(matrix: np.ndarray, expected: Rotation):
         [np.diagflat(["a", "b", "c"]), ValueError, r"could not convert .*? to float"],  # not a valid data type
     ],
 )
-def test_from_matrix_invalid_input(matrix: np.ndarray, expected_error: Type[Exception], error_regex: str):
+def test_from_matrix_invalid_input(matrix: Any, expected_error: Type[Exception], error_regex: str):
     with pytest.raises(expected_error, match=error_regex):
         _ = Rotation.from_matrix(matrix)
 
@@ -117,7 +117,7 @@ def test_rotation_matrix_round_trip(r: Rotation, homogeneous_matrix: bool):
         [np.pi / 2, [1, 0, 0], Rotation([1 / np.sqrt(2), 1 / np.sqrt(2), 0, 0])],
     ],
 )
-def test_from_angle_axis_valid_input(angle: float, axis: np.ndarray, expected: Rotation):
+def test_from_angle_axis_valid_input(angle: float, axis: ARRAY_LIKE_1D_T, expected: Rotation):
     r = Rotation.from_angle_axis(angle, axis)
     assert expected.almost_equal(r)
 
@@ -133,9 +133,7 @@ def test_from_angle_axis_valid_input(angle: float, axis: np.ndarray, expected: R
         [1, [0, 0, 1e-10], ValueError, r"zero length"],
     ],
 )
-def test_from_angle_axis_invalid_input(
-    angle: float, axis: np.ndarray, expected_error: Type[Exception], error_regex: str
-):
+def test_from_angle_axis_invalid_input(angle: Any, axis: Any, expected_error: Type[Exception], error_regex: str):
     with pytest.raises(expected_error, match=error_regex):
         _ = Rotation.from_angle_axis(angle, axis)
 
