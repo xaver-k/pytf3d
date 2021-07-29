@@ -14,6 +14,10 @@ import numpy as np
 ARRAY_LIKE_1D_T = Union[Iterable[Union[float, int]], np.ndarray]
 ARRAY_LIKE_2D_T = Union[Iterable[Union[ARRAY_LIKE_1D_T, np.ndarray]], np.ndarray]
 
+# misc vectors
+VECTOR_T = np.ndarray  # shape (3, ) representing a vector of 3D-coordinates, such as translations, axes etc
+UNIT_VECTOR_T = np.ndarray  # like VECTOR_T, but normalized to length 1
+
 # type definitions for more meaningful type-hints
 # Note that these are just aliases right now. With numpy >= 1.21 using numpy.typing.NDArray will be available
 # to constrain the types a little more.

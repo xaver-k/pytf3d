@@ -9,9 +9,11 @@ from hypothesis import example, given
 from pytest import mark, raises
 from pytf3d import QuaternionOrder, Rotation
 from pytf3d.testing import QuaternionStrategy, RotationStrategy
+from pytf3d.typing import ARRAY_LIKE_1D_T
 from pytf3d.utils import is_homogeneous_matrix, is_rotation_matrix
 from typing import Any, Type
 
+import hypothesis
 import hypothesis.strategies as st
 import numpy as np
 import pytest
@@ -64,7 +66,7 @@ def test_instantiation_with_invalid_values(
         [np.diagflat([-1, -1, 1]), Rotation([0, 0, 0, 1])],
         [np.diagflat([-1, -1, 1]).astype(np.int64), Rotation([0, 0, 0, 1])],
         [np.diagflat([-1, -1, 1]).astype(np.float32), Rotation([0, 0, 0, 1])],
-        [np.diagflat([1, 1, 1, 1]), Rotation([1, 0, 0, 0])],  # homogeneous matrix input
+        [np.diagflat([1, 1, 1, 1]), Rotation.identity()],  # homogeneous matrix input
     ],
 )
 def test_from_matrix_valid_input(matrix: np.ndarray, expected: Rotation):
@@ -86,9 +88,8 @@ def test_from_matrix_invalid_input(matrix: np.ndarray, expected_error: Type[Exce
 
 
 @given(r=RotationStrategy, homogeneous_matrix=st.booleans())
-@example(r=Rotation([1, 0, 0, 0]), homogeneous_matrix=True)
+@example(r=Rotation.identity(), homogeneous_matrix=True)
 def test_as_matrix(r: Rotation, homogeneous_matrix: bool):
-    print(homogeneous_matrix)
     matrix = r.as_matrix(homogeneous_matrix)
     if homogeneous_matrix:
         assert is_homogeneous_matrix(matrix)
@@ -101,3 +102,96 @@ def test_rotation_matrix_round_trip(r: Rotation, homogeneous_matrix: bool):
     matrix = r.as_matrix(to_homogeneous_matrix=homogeneous_matrix)
     r_restored = Rotation.from_matrix(matrix)
     assert r.almost_equal(r_restored), f"round trip failed, intermediate matrix:\n{matrix}"
+
+
+@mark.parametrize(
+    ["angle", "axis", "expected"],
+    [
+        [0, [1, 0, 0], Rotation.identity()],
+        [np.pi, [1, 0, 0], Rotation([0, 1, 0, 0])],
+        [np.pi, [0, 1, 0], Rotation([0, 0, 1, 0])],
+        [np.pi, [0, 0, 1], Rotation([0, 0, 0, 1])],
+        [-np.pi, [1, 0, 0], Rotation([0, 1, 0, 0])],
+        [np.pi, [2, 0, 0], Rotation([0, 1, 0, 0])],
+        [np.pi, [0.5, 0, 0], Rotation([0, 1, 0, 0])],
+        [3 * np.pi, [1, 0, 0], Rotation([0, 1, 0, 0])],
+        [np.pi / 2, [1, 0, 0], Rotation([1 / np.sqrt(2), 1 / np.sqrt(2), 0, 0])],
+    ],
+)
+def test_from_angle_axis_valid_input(angle: float, axis: np.ndarray, expected: Rotation):
+    r = Rotation.from_angle_axis(angle, axis)
+    assert expected.almost_equal(r)
+
+
+@mark.parametrize(
+    ["angle", "axis", "expected_error", "error_regex"],
+    [
+        [1, [1, 0], ValueError, r"Bad input shape"],
+        [1, [1, 0, 0, 0], ValueError, r"Bad input shape"],
+        [1, [1, 0, 0, 0], ValueError, r"Bad input shape"],
+        [1, ["a", "b", "c"], ValueError, r"could not convert .*? to float"],  # not a valid data type
+        [1, [0, 0, 0], ValueError, r"zero length"],
+        [1, [0, 0, 1e-10], ValueError, r"zero length"],
+    ],
+)
+def test_from_angle_axis_invalid_input(
+    angle: float, axis: np.ndarray, expected_error: Type[Exception], error_regex: re.Pattern
+):
+    with pytest.raises(expected_error, match=error_regex):
+        _ = Rotation.from_angle_axis(angle, axis)
+
+
+@given(r=RotationStrategy)
+@example(r=Rotation.identity())
+def test_as_angle_axis(r: Rotation):
+    angle, axis = r.as_angle_axis()
+
+    assert isinstance(angle, float)
+    assert 0 <= angle <= np.pi
+
+    assert axis.shape == (3,)
+    assert np.isclose(np.linalg.norm(axis), 1)
+
+
+@given(r=RotationStrategy, axis_factor=st.floats(allow_nan=False, allow_infinity=False))
+def test_angle_axis_round_trip(r: Rotation, axis_factor: float):
+    hypothesis.assume(not np.isclose(axis_factor, 0, rtol=0))
+    angle, axis = r.as_angle_axis()
+    r_restored = Rotation.from_angle_axis(angle, axis_factor * axis)  # scaling axis should give the same result
+    assert r.almost_equal(r_restored), f"round trip failed, intermediate representation:\nangle:{angle}\naxis:{axis}"
+
+
+@mark.parametrize(
+    ["rvec", "expected"],
+    [
+        [[0, 0, 0], Rotation.identity()],
+        [[np.pi, 0, 0], Rotation([0, 1, 0, 0])],
+        [[np.pi / 2, 0, 0], Rotation([1 / np.sqrt(2), 1 / np.sqrt(2), 0, 0])],
+        [[-np.pi / 2, 0, 0], Rotation([1 / np.sqrt(2), -1 / np.sqrt(2), 0, 0])],
+        [[0, np.pi, 0], Rotation([0, 0, 1, 0])],
+        [[0, 0, np.pi], Rotation([0, 0, 0, 1])],
+    ],
+)
+def test_from_rotation_vector_valid_input(rvec: ARRAY_LIKE_1D_T, expected: Rotation):
+    r = Rotation.from_rotation_vector(rvec)
+    assert expected.almost_equal(r)
+
+
+@mark.parametrize(
+    ["rvec", "expected_error", "error_regex"],
+    [
+        [[1, 0], ValueError, r"Bad input shape"],
+        [[1, 0, 0, 0], ValueError, r"Bad input shape"],
+        [[[1, 1], [1, 1]], ValueError, r"Bad input shape"],
+    ],
+)
+def test_from_rotation_vector_invalid_input(rvec: Any, expected_error: Type[Exception], error_regex: re.Pattern):
+    with pytest.raises(expected_error, match=error_regex):
+        _ = Rotation.from_rotation_vector(rvec)
+
+
+@given(r=RotationStrategy)
+def test_rotation_vector_round_trip(r: Rotation):
+    rvec = r.as_rotation_vector()
+    r_restored = Rotation.from_rotation_vector(rvec)
+    assert r.almost_equal(r_restored), f"round trip failed, intermediate representation:\n{rvec}"

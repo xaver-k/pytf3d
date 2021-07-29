@@ -12,4 +12,6 @@ from ._types import (
     QUATERNION_T,
     ROTATION_MATRIX_T,
     UNIT_QUATERNION_T,
+    UNIT_VECTOR_T,
+    VECTOR_T,
 )

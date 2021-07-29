@@ -13,9 +13,11 @@ from pytf3d.typing import (
     QUATERNION_T,
     ROTATION_MATRIX_T,
     UNIT_QUATERNION_T,
+    UNIT_VECTOR_T,
+    VECTOR_T,
 )
 from pytf3d.utils import is_rotation_matrix
-from typing import Sequence, Union
+from typing import Sequence, Set, Tuple, Union
 
 import numpy as np
 
@@ -50,9 +52,7 @@ class Rotation:
         """
 
         q_: QUATERNION_T = np.asarray(q, np.float64).squeeze()
-
-        if q_.shape != (4,):
-            raise ValueError(f"Not a valid quaternion shape ({q_.shape}) from input: {q}")
+        self._raise_if_not_expected_shape(q_, (4,))
 
         # quaternion values are stored internally with the following conventions:
         # * wxyz-order
@@ -82,6 +82,10 @@ class Rotation:
     def slerp(self):
         raise NotImplementedError()
 
+    @staticmethod
+    def identity() -> "Rotation":
+        return Rotation([1, 0, 0, 0])
+
     @classmethod
     def from_matrix(cls, matrix: Union[ROTATION_MATRIX_T, HOMOGENEOUS_MATRIX_T, ARRAY_LIKE_2D_T]) -> "Rotation":
         """
@@ -98,8 +102,7 @@ class Rotation:
         # todo: see https://upcommons.upc.edu/bitstream/handle/2117/178326/2083-A-Survey-on-the-Computation-of-Quaternions-from-Rotation-Matrices.pdf
         #       for other, better methods?
         m: np.ndarray = np.asanyarray(matrix, dtype=np.float64).squeeze()
-        if m.shape not in {(3, 3), (4, 4)}:
-            raise ValueError(f"Bad input shape, expected 3x3 or 4x4 (after squeezing, but gut {m.shape} instead.")
+        cls._raise_if_not_expected_shape(m, {(3, 3), (4, 4)})
         if not is_rotation_matrix(m[:3, :3]):
             raise ValueError(f"Input matrix does not describe a proper rotation: {matrix}")
 
@@ -148,15 +151,52 @@ class Rotation:
         )
 
     @classmethod
+    def from_angle_axis(cls, angle: float, axis: Union[VECTOR_T, ARRAY_LIKE_1D_T]) -> "Rotation":
+        """
+        factory to construct a rotation form axis-angle input
+
+        :param angle: rotation angle in radian
+        :param axis: shape (3,) 3D axis to rotate around, will be normalized internally but must not be of length 0
+        """
+
+        axis_: np.asarray = np.asarray(axis, dtype=np.float64).squeeze()
+        cls._raise_if_not_expected_shape(axis_, (3,))
+
+        axis_norm = np.linalg.norm(axis_)
+        if np.isclose(axis_norm, 0, rtol=0.0):
+            raise ValueError(f"Rotation axis must not be of (close to) zero length. Input: {axis}")
+
+        s = np.sin(angle / 2)
+        w = np.cos(angle / 2)
+        unit_vector = axis_ / axis_norm
+        return Rotation((w, s * unit_vector[0], s * unit_vector[1], s * unit_vector[2]))
+
+    # todo: refactor checks, reoccurring code
+    # todo: reject invalid inputs
+    # todo: unittests checking individual values
+    @classmethod
+    def from_rotation_vector(cls, rotation_vector: Union[VECTOR_T, ARRAY_LIKE_1D_T]) -> "Rotation":
+        """
+        factory to construct a rotation form a rotation vector (sometimes also called Euler vector or
+        equal-angle-axis-representation)
+
+        :param rotation_vector: shape (3,) rotation vector
+        """
+        rvec: np.asarray = np.asarray(rotation_vector, dtype=np.float64).squeeze()
+        cls._raise_if_not_expected_shape(rvec, (3,))
+
+        angle = float(np.linalg.norm(rvec))
+        if np.isclose(angle, 0, rtol=0.0):
+            return cls.from_angle_axis(angle, [1, 0, 0])
+        else:
+            return cls.from_angle_axis(angle, rvec)  # axis does not need to be normalized, so a factor of angle is fine
+
+    @classmethod
     def from_euler(cls, euler_angles: Sequence[float], axes: str) -> "Rotation":
         raise NotImplementedError()
 
     @classmethod
     def from_rpy(cls, rpy: Sequence[float]) -> "Rotation":
-        raise NotImplementedError()
-
-    @classmethod
-    def from_eea(cls, eea: Sequence[float]) -> "Rotation":
         raise NotImplementedError()
 
     # todo: testing -> matrix shape, homog. matrix last rows, columns, rotation matrix properties, there and back again
@@ -201,13 +241,33 @@ class Rotation:
             return _wxyz_to_xyzw(self._q)
         return self._q
 
+    def as_angle_axis(self) -> Tuple[float, UNIT_VECTOR_T]:
+        """
+        return the scalar rotation angle and 3D rotation axis describing the given rotation
+
+        :return: (angle, axis) with angle in [0, pi] and axis as a unit-vector
+        """
+        w = self._q[0]
+        angle = float(2 * np.arccos(w))
+        if np.isclose(w, 1, rtol=0):
+            axis = np.array([1, 0, 0], dtype=np.float64)
+        else:
+            axis = self._q[1:] / np.sqrt(1 - w ** 2)
+
+        return angle, axis
+
+    def as_rotation_vector(self) -> VECTOR_T:
+        """
+        return the rotation vector representation (sometimes also called Euler vector or equal-angle-axis-representation)
+        describing the given rotation
+        """
+        angle, axis = self.as_angle_axis()
+        return angle * axis
+
     def as_euler(self, axes: str) -> np.ndarray:
         raise NotImplementedError()
 
     def as_rpy(self) -> np.ndarray:
-        raise NotImplementedError()
-
-    def as_eaa(self) -> np.ndarray:
         raise NotImplementedError()
 
     def inverse(self) -> "Rotation":
@@ -223,3 +283,13 @@ class Rotation:
         # This behaves numerically more stable than component-wise comparison.
         # See https://gamedev.stackexchange.com/a/75108 for more info.
         return np.abs(np.dot(self._q, other.as_quaternion())) - 1.0 <= eps
+
+    @staticmethod
+    def _raise_if_not_expected_shape(a: np.ndarray, expected: Union[Tuple[int, ...], Set[Tuple[int, ...]]]) -> None:
+        if not isinstance(expected, set):
+            expected = {expected}
+        if a.shape not in expected:
+            expected_str = ", ".join(str(tupl) for tupl in sorted(list(expected)))
+            raise ValueError(
+                f"Bad input shape, expected one of {expected_str} (after squeezing), but got {a.shape} instead."
+            )
