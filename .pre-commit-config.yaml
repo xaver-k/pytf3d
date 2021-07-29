@@ -24,6 +24,7 @@ repos:
   - id: forbid-tabs
   - id: insert-license
     args: ["--license-filepath", ".license_header.txt", "--comment-style", "\"\"\"||\"\"\""]
+    files: '.*\.py'
 
 - repo: https://github.com/psf/black
   rev: 21.7b0
