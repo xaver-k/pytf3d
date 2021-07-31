@@ -295,3 +295,12 @@ class Rotation:
             raise ValueError(
                 f"Bad input shape, expected one of {expected_str} (after squeezing), but got {a.shape} instead."
             )
+
+    @staticmethod
+    def _hamilton_product(q1: QUATERNION_T, q2: QUATERNION_T) -> QUATERNION_T:
+        r1, v1 = q1[0], q1[1:]
+        r2, v2 = q2[0], q2[1:]
+        return np.r_[
+            (r1 * r2 - v1 @ v2,),  # w-part
+            r1 * v2 + r2 * v1 + np.cross(v1, v2),  # xyz-part
+        ]
