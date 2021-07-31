@@ -10,6 +10,7 @@ from pytf3d.typing import (
     ARRAY_LIKE_1D_T,
     ARRAY_LIKE_2D_T,
     HOMOGENEOUS_MATRIX_T,
+    HOMOGENEOUS_VECTOR_T,
     QUATERNION_T,
     ROTATION_MATRIX_T,
     UNIT_QUATERNION_T,
@@ -17,7 +18,7 @@ from pytf3d.typing import (
     VECTOR_T,
 )
 from pytf3d.utils import is_rotation_matrix
-from typing import Sequence, Set, Tuple, Union
+from typing import overload, Sequence, Set, Tuple, Union
 
 import numpy as np
 
@@ -74,8 +75,36 @@ class Rotation:
     def __repr__(self) -> str:
         return "Rotation({:.8f} | {:.8f}, {:.8f}, {:.8f})".format(*self._q)
 
+    @overload
     def __matmul__(self, other: "Rotation") -> "Rotation":
-        raise NotImplementedError()
+        ...
+
+    # note: imprecise overload for now, is the best we can do for numpy <= 1.19
+    @overload
+    def __matmul__(
+        self, other: Union[ARRAY_LIKE_1D_T, VECTOR_T, HOMOGENEOUS_VECTOR_T]
+    ) -> Union[VECTOR_T, HOMOGENEOUS_VECTOR_T]:
+        ...
+
+    def __matmul__(
+        self, other: Union["Rotation", ARRAY_LIKE_1D_T, VECTOR_T, HOMOGENEOUS_VECTOR_T]
+    ) -> Union["Rotation", VECTOR_T, HOMOGENEOUS_VECTOR_T]:
+
+        # concatenation of rotations
+        if isinstance(other, self.__class__):
+            return self.__class__(self._hamilton_product(self._q, other._q))
+
+        # expect a coordinate vector that we should apply the rotation to
+        vector: Union[VECTOR_T, HOMOGENEOUS_VECTOR_T] = np.asarray(other, dtype=np.float64).squeeze()
+        self._raise_if_not_expected_shape(vector, {(3,), (4,)})
+        is_homogeneous = vector.shape == (4,)
+        if is_homogeneous and not np.isclose(vector[3], 1, rtol=0):
+            raise ValueError(f"{other} has the shape of a homogeneous vector, but the last component is not 1.")
+
+        q_res = self._hamilton_product(self._hamilton_product(self._q, np.r_[0, vector[:3]]), self._q_conjugate)
+        if is_homogeneous:
+            return np.r_[q_res[1:], 1.0]
+        return q_res[1:]
 
     def __pow__(self, power, modulo=None) -> "Rotation":
         raise NotImplementedError()
