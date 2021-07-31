@@ -291,3 +291,12 @@ def test_matmul_rotation_gives_same_result_as_rotation_matrix(r1: Rotation, r2: 
     rotation_res = r1 @ r2
     matrix_res = r1.as_matrix(homogeneous) @ r2.as_matrix(homogeneous)
     assert np.allclose(rotation_res.as_matrix(homogeneous), matrix_res, atol=1e-3)
+
+
+@given(r=RotationStrategy)
+def test_inverse(r: Rotation):
+    ident_1 = r @ r.inverse()
+    ident_2 = r.inverse() @ r
+
+    assert Rotation.identity().almost_equal(ident_1)
+    assert Rotation.identity().almost_equal(ident_2)
