@@ -67,6 +67,10 @@ class Rotation:
             raise ValueError(f"Input quaternion has zero length (within tolerance): {q}.")
         self._q: UNIT_QUATERNION_T = q_ / q_norm
 
+    @property
+    def _q_conjugate(self):
+        return self._q * np.array([1.0, -1.0, -1.0, -1.0])
+
     def __repr__(self) -> str:
         return "Rotation({:.8f} | {:.8f}, {:.8f}, {:.8f})".format(*self._q)
 
@@ -271,9 +275,7 @@ class Rotation:
         raise NotImplementedError()
 
     def inverse(self) -> "Rotation":
-        inverse_q = self._q.copy()
-        inverse_q[0] *= -1.0
-        return Rotation(inverse_q)
+        return Rotation(self._q_conjugate)
 
     def almost_equal(self, other: "Rotation", eps: float = 1e-6) -> bool:
         """
