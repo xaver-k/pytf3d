@@ -5,10 +5,10 @@
 """
 
 
-from hypothesis import example, given
+from hypothesis import example, given, settings
 from pytest import mark, raises
 from pytf3d import QuaternionOrder, Rotation
-from pytf3d.testing import QuaternionStrategy, RotationStrategy
+from pytf3d.testing import HomogeneousVectorStrategy, QuaternionStrategy, RotationStrategy, VectorStrategy
 from pytf3d.typing import ARRAY_LIKE_1D_T, HOMOGENEOUS_MATRIX_T, QUATERNION_T, ROTATION_MATRIX_T
 from pytf3d.utils import is_homogeneous_matrix, is_rotation_matrix
 from typing import Any, Type, Union
@@ -192,3 +192,102 @@ def test_rotation_vector_round_trip(r: Rotation):
     rvec = r.as_rotation_vector()
     r_restored = Rotation.from_rotation_vector(rvec)
     assert r.almost_equal(r_restored), f"round trip failed, intermediate representation:\n{rvec}"
+
+
+@mark.parametrize(
+    ["r", "v", "expected"],
+    [
+        [Rotation.identity(), [1, 0, 0], [1, 0, 0]],
+        [Rotation.from_angle_axis(np.pi / 2, [1, 0, 0]), [1, 0, 0], [1, 0, 0]],
+        [Rotation.from_angle_axis(-np.pi / 2, [1, 0, 0]), [1, 0, 0], [1, 0, 0]],
+        [Rotation.from_angle_axis(np.pi / 2, [0, 1, 0]), [1, 0, 0], [0, 0, -1]],
+        [Rotation.from_angle_axis(np.pi / 2, [0, 0, 1]), [1, 0, 0], [0, 1, 0]],
+        [Rotation.from_angle_axis(np.pi / 2, [0, 0, 1]), [1, 1, 1], [-1, 1, 1]],
+    ],
+)
+def test_matmul_vector(r: Rotation, v: ARRAY_LIKE_1D_T, expected: ARRAY_LIKE_1D_T):
+    res = r @ v
+    assert isinstance(res, np.ndarray)
+    assert res.shape == (3,)
+    assert res.dtype == np.float64
+    assert np.allclose(res, expected)  # type: ignore
+
+
+@mark.parametrize(
+    ["r", "v", "expected"],
+    [
+        [Rotation.identity(), [1, 0, 0, 1], [1, 0, 0, 1]],
+        [Rotation.from_angle_axis(np.pi / 2, [1, 0, 0]), [1, 0, 0, 1], [1, 0, 0, 1]],
+        [Rotation.from_angle_axis(-np.pi / 2, [1, 0, 0]), [1, 0, 0, 1], [1, 0, 0, 1]],
+        [Rotation.from_angle_axis(np.pi / 2, [0, 1, 0]), [1, 0, 0, 1], [0, 0, -1, 1]],
+        [Rotation.from_angle_axis(np.pi / 2, [0, 0, 1]), [1, 0, 0, 1], [0, 1, 0, 1]],
+        [Rotation.from_angle_axis(np.pi / 2, [0, 0, 1]), [1, 1, 1, 1], [-1, 1, 1, 1]],
+    ],
+)
+def test_matmul_homogeneous_vector(r: Rotation, v: ARRAY_LIKE_1D_T, expected: ARRAY_LIKE_1D_T):
+    res = r @ v
+    assert isinstance(res, np.ndarray)
+    assert res.shape == (4,)
+    assert res[3] == 1
+    assert res.dtype == np.float64
+    assert np.allclose(res, expected)  # type: ignore
+
+
+@mark.parametrize(
+    ["r", "other", "expected"],
+    [
+        [Rotation.identity(), Rotation.identity(), Rotation.identity()],
+        [Rotation.identity(), Rotation.from_angle_axis(np.pi, [1, 0, 0]), Rotation.from_angle_axis(np.pi, [1, 0, 0])],
+        [
+            Rotation.from_angle_axis(np.pi / 2, [1, 0, 0]),
+            Rotation.from_angle_axis(np.pi / 2, [1, 0, 0]),
+            Rotation.from_angle_axis(np.pi, [1, 0, 0]),
+        ],
+        [
+            Rotation.from_angle_axis(np.pi, [1, 0, 0]),
+            Rotation.from_angle_axis(-np.pi / 2, [0, 0, 1]),
+            Rotation.from_angle_axis(np.pi, [1, 1, 0]),
+        ],
+    ],
+)
+def test_matmul_rotation(r: Rotation, other: Rotation, expected: Rotation):
+    res = r @ other
+    assert res.almost_equal(expected)
+
+
+@mark.parametrize(
+    ["inp", "expected_error", "error_regex"],
+    [
+        [[0, 0, 0, 2], ValueError, "has the shape of a homogeneous vector, but the last component is not 1."],
+        [[0, 0], ValueError, "Bad input shape"],
+        [["a", "b", "c"], ValueError, r"could not convert .*? to float"],
+    ],
+)
+@given(
+    r=RotationStrategy,
+)
+@settings(max_examples=10)
+def test_matmult_bad_inputs(r: Rotation, inp: Any, expected_error: Type[Exception], error_regex: str):
+    with pytest.raises(expected_error, match=error_regex):
+        _ = r @ inp
+
+
+@given(r=RotationStrategy, v=VectorStrategy)
+def test_matmul_vector_gives_same_result_as_rotation_matrix(r: Rotation, v: ARRAY_LIKE_1D_T):
+    rotation_res = r @ v
+    matrix_res = r.as_matrix() @ v
+    assert np.allclose(rotation_res, matrix_res, atol=1e-3)
+
+
+@given(r=RotationStrategy, v=HomogeneousVectorStrategy)
+def test_matmul_homogeneous_vector_gives_same_result_as_rotation_matrix(r: Rotation, v: ARRAY_LIKE_1D_T):
+    rotation_res = r @ v
+    matrix_res = r.as_matrix(to_homogeneous_matrix=True) @ v
+    assert np.allclose(rotation_res, matrix_res, atol=1e-3)
+
+
+@given(r1=RotationStrategy, r2=RotationStrategy, homogeneous=st.booleans())
+def test_matmul_rotation_gives_same_result_as_rotation_matrix(r1: Rotation, r2: Rotation, homogeneous: bool):
+    rotation_res = r1 @ r2
+    matrix_res = r1.as_matrix(homogeneous) @ r2.as_matrix(homogeneous)
+    assert np.allclose(rotation_res.as_matrix(homogeneous), matrix_res, atol=1e-3)
