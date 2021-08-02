@@ -34,7 +34,7 @@ repos:
     # setup via pyproject.toml file
 
 - repo: https://github.com/PyCQA/isort
-  rev: "5.9.2"
+  rev: "5.9.3"
   hooks:
   - id: isort
     language: python
