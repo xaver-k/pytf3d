@@ -106,8 +106,14 @@ class Rotation:
             return np.r_[q_res[1:], 1.0]
         return q_res[1:]
 
-    def __pow__(self, power, modulo=None) -> "Rotation":
-        raise NotImplementedError()
+    def __pow__(self, power: float) -> "Rotation":
+        omega = np.arccos(self._q[0])
+        if np.isclose(omega, 0) or np.isclose(omega, np.pi):
+            # only happens if self._q[0] close to -+ 1, so vector part of quaternion is close to (0, 0, 0)
+            v = np.array([0, 0, 0])
+        else:
+            v = self._q[1:] / np.sin(omega)
+        return Rotation(np.r_[np.cos(power * omega), v * np.sin(power * omega)])
 
     def random(self, random_state) -> "Rotation":
         raise NotImplementedError()

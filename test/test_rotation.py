@@ -300,3 +300,33 @@ def test_inverse(r: Rotation):
 
     assert Rotation.identity().almost_equal(ident_1)
     assert Rotation.identity().almost_equal(ident_2)
+
+
+@given(r=RotationStrategy, power=st.integers(0, 20))
+def test_positive_int_powers(r: Rotation, power: int):
+    r1 = r ** power
+    r2 = r.identity()
+    for _ in range(power):
+        r2 @= r
+    assert r1.almost_equal(r2)
+
+
+@given(r=RotationStrategy, power=st.floats(-20, 20))
+def test_power_inverse_relation(r: Rotation, power: float):
+    r1 = (r ** power).inverse()
+    r2 = r ** -power
+    assert r1.almost_equal(r2)
+
+
+@given(power=st.floats(-20, 20))
+def test_identity_powers(power: float):
+    ident = Rotation.identity()
+    assert ident.almost_equal(ident ** power)
+
+
+@given(r=RotationStrategy, power=st.floats(-20, 20))
+def test_power_rotation_vector_relation(r: Rotation, power: float):
+    r_vec = r.as_rotation_vector()
+    r1 = r ** power
+    r2 = r.from_rotation_vector(power * r_vec)
+    assert r1.almost_equal(r2)
