@@ -282,7 +282,8 @@ class Rotation:
         # Check for cosine similarity between 4D-vectors (and keep in mind that q and -q are the same rotation).
         # This behaves numerically more stable than component-wise comparison.
         # See https://gamedev.stackexchange.com/a/75108 for more info.
-        return np.abs(np.dot(self._q, other.as_quaternion())) - 1.0 <= eps
+        cosine_similarity = np.abs(np.dot(self._q, other.as_quaternion()))
+        return float(cosine_similarity) > 1.0 - eps
 
     @staticmethod
     def _raise_if_not_expected_shape(a: np.ndarray, expected: Union[Tuple[int, ...], Set[Tuple[int, ...]]]) -> None:
