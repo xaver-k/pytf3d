@@ -165,7 +165,7 @@ def test_as_angle_axis(r: Rotation):
     assert np.isclose(np.linalg.norm(axis), 1)
 
 
-@given(r=RotationStrategy, axis_factor=st.floats(allow_nan=False, allow_infinity=False))
+@given(r=RotationStrategy, axis_factor=st.floats(min_value=1e-3, max_value=1e3, allow_nan=False))
 def test_angle_axis_round_trip(r: Rotation, axis_factor: float):
     hypothesis.assume(not np.isclose(axis_factor, 0, rtol=0))
     angle, axis = r.as_angle_axis()
