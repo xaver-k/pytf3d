@@ -5,10 +5,16 @@
 """
 
 
-from hypothesis import example, given, settings
+from hypothesis import assume, example, given, settings
 from pytest import mark, raises
 from pytf3d import QuaternionOrder, Rotation
-from pytf3d.testing import HomogeneousVectorStrategy, QuaternionStrategy, RotationStrategy, VectorStrategy
+from pytf3d.testing import (
+    HomogeneousVectorStrategy,
+    QuaternionStrategy,
+    RotationStrategy,
+    UnitQuaternionStrategy,
+    VectorStrategy,
+)
 from pytf3d.typing import ARRAY_LIKE_1D_T, HOMOGENEOUS_MATRIX_T, QUATERNION_T, ROTATION_MATRIX_T
 from pytf3d.utils import is_homogeneous_matrix, is_rotation_matrix
 from typing import Any, Type, Union
@@ -57,6 +63,21 @@ def test_instantiation_with_invalid_values(
 ):
     with raises(expected_error):
         _ = Rotation(invalid_value, quat_order_in)
+
+
+@given(q=UnitQuaternionStrategy, diff=UnitQuaternionStrategy, diff_norm=st.sampled_from([0, 1e-6]))
+def test_equality_returns_true_for_equality(q: QUATERNION_T, diff: QUATERNION_T, diff_norm: float):
+    q_plus_diff = q + diff * diff_norm
+    print(q)
+    print(q_plus_diff)
+    assert Rotation(q).almost_equal(Rotation(q_plus_diff))
+
+
+@given(q1=UnitQuaternionStrategy, q2=UnitQuaternionStrategy)
+def test_equality_returns_false_for_inequality(q1: QUATERNION_T, q2: QUATERNION_T):
+    assume(not np.allclose(q1, q2))
+    assume(not np.allclose(q1, -q2))
+    assert not Rotation(q1).almost_equal(Rotation(q2))
 
 
 @mark.parametrize(
