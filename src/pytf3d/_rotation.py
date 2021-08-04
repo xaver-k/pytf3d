@@ -109,7 +109,7 @@ class Rotation:
         trace = np.trace(m[:3, :3])
         if trace > 0:
             w = 0.5 * np.sqrt(1 + trace)
-            c = 0.25 * w
+            c = 0.25 / w
             return Rotation(
                 [
                     w,
