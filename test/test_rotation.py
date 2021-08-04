@@ -62,8 +62,6 @@ def test_instantiation_with_invalid_values(
 @given(q=UnitQuaternionStrategy, diff=UnitQuaternionStrategy, diff_norm=st.sampled_from([0, 1e-6]))
 def test_equality_returns_true_for_equality(q: QUATERNION_T, diff: QUATERNION_T, diff_norm: float):
     q_plus_diff = q + diff * diff_norm
-    print(q)
-    print(q_plus_diff)
     assert Rotation(q).almost_equal(Rotation(q_plus_diff))
 
 
