@@ -86,6 +86,20 @@ def test_from_matrix_valid_input(matrix: Union[ROTATION_MATRIX_T, HOMOGENEOUS_MA
     assert expected.almost_equal(r)
 
 
+@given(angle=st.floats(min_value=-np.pi, max_value=np.pi, allow_nan=False))
+def test_from_matrix_Rx(angle: float):
+    # fmt: off
+    matrix = np.array(
+        [
+            [1, 0, 0],
+            [0, np.cos(angle), -np.sin(angle)],
+            [0, np.sin(angle), np.cos(angle)]]
+    )
+    # fmt: on
+    q = (np.cos(angle / 2), np.sin(angle / 2), 0, 0)
+    assert Rotation(q).almost_equal(Rotation.from_matrix(matrix))
+
+
 @mark.parametrize(
     ["matrix", "expected_error", "error_regex"],
     [
