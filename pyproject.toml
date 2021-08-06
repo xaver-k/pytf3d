@@ -45,7 +45,7 @@ logging-format-style="old"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "--no-cov-on-fail --cov=src --cov=test"
+addopts = "--no-cov-on-fail --cov=src --cov=test -n auto"
 testpaths = ["test"]
 
 
@@ -83,6 +83,7 @@ numpy = [
     {version = "^1.19.0", python = "^3.6.0"},
     {version = "^1.20", python = "^3.7"}
 ]
+pytest-xdist = {extras = ["psutil"], version = "^2.3.0"}
 
 [tool.poetry.extras]
 testing = ["hypothesis"]
