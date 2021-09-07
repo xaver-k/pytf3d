@@ -225,7 +225,7 @@ class Rotation:
         cls._raise_if_not_expected_shape(rvec, (3,))
 
         angle = float(np.linalg.norm(rvec))
-        if np.isclose(angle, 0, rtol=0.0):
+        if np.isclose(angle, 0, rtol=0.0, atol=1e-12):
             return cls.from_angle_axis(angle, [1, 0, 0])
         else:
             return cls.from_angle_axis(angle, rvec)  # axis does not need to be normalized, so a factor of angle is fine
@@ -288,7 +288,7 @@ class Rotation:
         """
         w = self._q[0]
         angle = float(2 * np.arccos(w))
-        if np.isclose(w, 1, rtol=0):
+        if np.isclose(w, 1, rtol=0, atol=1e-12):
             axis = np.array([1, 0, 0], dtype=np.float64)
         else:
             axis = self._q[1:] / np.sqrt(1 - w ** 2)
