@@ -67,8 +67,8 @@ def test_equality_returns_true_for_equality(q: QUATERNION_T, diff: QUATERNION_T,
 
 @given(q1=UnitQuaternionStrategy, q2=UnitQuaternionStrategy)
 def test_equality_returns_false_for_inequality(q1: QUATERNION_T, q2: QUATERNION_T):
-    assume(not np.allclose(q1, q2, atol=1e-5))
-    assume(not np.allclose(q1, -q2, atol=1e-5))
+    assume(not np.allclose(q1, q2, atol=1e-6))
+    assume(not np.allclose(q1, -q2, atol=1e-6))
     assert not Rotation(q1).almost_equal(Rotation(q2))
 
 
