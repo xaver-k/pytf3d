@@ -278,12 +278,15 @@ class Rotation:
     def almost_equal(self, other: "Rotation", eps: float = 1e-6) -> bool:
         """
         check if two Rotation objects represent the same rotation within tolerance
+
+        :param other: rotation to check against
+        :param eps: comparison tolerance, note that we compare the cosine tolerance and use eps**2 internally for that
         """
         # Check for cosine similarity between 4D-vectors (and keep in mind that q and -q are the same rotation).
         # This behaves numerically more stable than component-wise comparison.
         # See https://gamedev.stackexchange.com/a/75108 for more info.
         cosine_similarity = np.abs(np.dot(self._q, other.as_quaternion()))
-        return float(cosine_similarity) > 1.0 - eps
+        return float(cosine_similarity) > 1.0 - eps ** 2
 
     @staticmethod
     def _raise_if_not_expected_shape(a: np.ndarray, expected: Union[Tuple[int, ...], Set[Tuple[int, ...]]]) -> None:
