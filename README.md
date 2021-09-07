@@ -53,6 +53,9 @@ bump2version patch --dry-run --allow-dirty --verbose
 ## testing
 Run tests by running `poetry run pytest` in the root of your repository (or just `pytest` if you have the correct project interpreter set).
 
+We are using the `pytest-xdist`- and `pytest-cov`-plugins, which can break the debugger in IDEs like Pycharm.
+To get things working again, add `-n0 --no-cov` as additional arguments in your run/debug configuration, which effectively disables the plugins.
+
 # Why this library?
 
 TODO:
