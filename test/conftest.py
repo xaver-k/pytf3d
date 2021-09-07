@@ -12,4 +12,4 @@ import os
 common = settings(derandomize=True)
 settings.register_profile("ci", parent=common, max_examples=1000, print_blob=True)
 settings.register_profile("dev", parent=common, max_examples=50)
-settings.load_profile(os.getenv(u"HYPOTHESIS_PROFILE", "dev").lower())
+settings.load_profile(os.getenv("HYPOTHESIS_PROFILE", "dev").lower())
