@@ -68,15 +68,13 @@ def test_instantiation_with_invalid_values(
 @given(q=UnitQuaternionStrategy, diff=UnitQuaternionStrategy, diff_norm=st.sampled_from([0, 1e-6]))
 def test_equality_returns_true_for_equality(q: QUATERNION_T, diff: QUATERNION_T, diff_norm: float):
     q_plus_diff = q + diff * diff_norm
-    print(q)
-    print(q_plus_diff)
     assert Rotation(q).almost_equal(Rotation(q_plus_diff))
 
 
 @given(q1=UnitQuaternionStrategy, q2=UnitQuaternionStrategy)
 def test_equality_returns_false_for_inequality(q1: QUATERNION_T, q2: QUATERNION_T):
-    assume(not np.allclose(q1, q2))
-    assume(not np.allclose(q1, -q2))
+    assume(not np.allclose(q1, q2, atol=1e-6))
+    assume(not np.allclose(q1, -q2, atol=1e-6))
     assert not Rotation(q1).almost_equal(Rotation(q2))
 
 
@@ -92,6 +90,20 @@ def test_equality_returns_false_for_inequality(q1: QUATERNION_T, q2: QUATERNION_
 def test_from_matrix_valid_input(matrix: Union[ROTATION_MATRIX_T, HOMOGENEOUS_MATRIX_T], expected: Rotation):
     r = Rotation.from_matrix(matrix)
     assert expected.almost_equal(r)
+
+
+@given(angle=st.floats(min_value=-np.pi, max_value=np.pi, allow_nan=False))
+def test_from_matrix_Rx(angle: float):
+    # fmt: off
+    matrix = np.array(
+        [
+            [1, 0, 0],
+            [0, np.cos(angle), -np.sin(angle)],
+            [0, np.sin(angle), np.cos(angle)]]
+    )
+    # fmt: on
+    q = (np.cos(angle / 2), np.sin(angle / 2), 0, 0)
+    assert Rotation(q).almost_equal(Rotation.from_matrix(matrix))
 
 
 @mark.parametrize(
@@ -171,7 +183,7 @@ def test_as_angle_axis(r: Rotation):
     assert np.isclose(np.linalg.norm(axis), 1)
 
 
-@given(r=RotationStrategy, axis_factor=st.floats(allow_nan=False, allow_infinity=False))
+@given(r=RotationStrategy, axis_factor=st.floats(min_value=1e-3, max_value=1e3, allow_nan=False))
 def test_angle_axis_round_trip(r: Rotation, axis_factor: float):
     hypothesis.assume(not np.isclose(axis_factor, 0, rtol=0))
     angle, axis = r.as_angle_axis()
