@@ -15,8 +15,9 @@ ARRAY_LIKE_1D_T = Union[Iterable[Union[float, int]], np.ndarray]
 ARRAY_LIKE_2D_T = Union[Iterable[Union[ARRAY_LIKE_1D_T, np.ndarray]], np.ndarray]
 
 # misc vectors
-VECTOR_T = np.ndarray  # shape (3, ) representing a vector of 3D-coordinates, such as translations, axes etc
+VECTOR_T = np.ndarray  # shape (3, ), a vector of 3D-coordinates, such as translations, axes etc
 UNIT_VECTOR_T = np.ndarray  # like VECTOR_T, but normalized to length 1
+HOMOGENEOUS_VECTOR_T = np.ndarray  # shape (4, ), a homogeneous vector of 3D-coordinates with 1 as the last component
 
 # type definitions for more meaningful type-hints
 # Note that these are just aliases right now. With numpy >= 1.21 using numpy.typing.NDArray will be available

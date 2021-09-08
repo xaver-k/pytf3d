@@ -5,6 +5,7 @@
 """
 
 
+from hypothesis.extra.numpy import arrays
 from pytf3d import QUATERNION_TOLERANCE, Rotation
 from typing import Sequence
 
@@ -32,3 +33,15 @@ UnitQuaternionStrategy.__doc__ = (
 )
 
 RotationStrategy = st.builds(Rotation, QuaternionStrategy)
+
+
+def _set_last_value_to_1(a: np.ndarray):
+    a[-1] = 1
+    return a
+
+
+# note: +-1e12 is a reasonable range for all coordinate values that we can reasonably expect: picometer -> terrameter
+VectorStrategy = arrays(np.float64, (3,), elements=st.floats(-1e-12, 1e12, allow_nan=False))
+HomogeneousVectorStrategy = arrays(np.float64, (4,), elements=st.floats(-1e-12, 1e12, allow_nan=False)).map(
+    _set_last_value_to_1
+)

@@ -10,6 +10,12 @@ try:
 except ModuleNotFoundError:
     pass
 else:
-    from ._strategies import QuaternionStrategy, RotationStrategy, UnitQuaternionStrategy
+    from ._strategies import (
+        HomogeneousVectorStrategy,
+        QuaternionStrategy,
+        RotationStrategy,
+        UnitQuaternionStrategy,
+        VectorStrategy,
+    )
 finally:
     del hypothesis
