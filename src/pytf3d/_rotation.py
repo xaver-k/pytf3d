@@ -247,8 +247,6 @@ class Rotation:
     def from_rpy(cls, rpy: Sequence[float]) -> "Rotation":
         raise NotImplementedError()
 
-    # todo: testing -> matrix shape, homog. matrix last rows, columns, rotation matrix properties, there and back again
-    #   check identity, check certain examples
     def as_matrix(self, to_homogeneous_matrix: bool = False) -> Union[ROTATION_MATRIX_T, HOMOGENEOUS_MATRIX_T]:
         """
         return the matrix representation of this Rotation
