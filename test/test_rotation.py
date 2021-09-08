@@ -15,7 +15,14 @@ from pytf3d.testing import (
     UnitQuaternionStrategy,
     VectorStrategy,
 )
-from pytf3d.typing import ARRAY_LIKE_1D_T, HOMOGENEOUS_MATRIX_T, QUATERNION_T, ROTATION_MATRIX_T
+from pytf3d.typing import (
+    ARRAY_LIKE_1D_T,
+    HOMOGENEOUS_MATRIX_T,
+    HOMOGENEOUS_VECTOR_T,
+    QUATERNION_T,
+    ROTATION_MATRIX_T,
+    VECTOR_T,
+)
 from pytf3d.utils import is_homogeneous_matrix, is_rotation_matrix
 from typing import Any, Type, Union
 
@@ -363,3 +370,10 @@ def test_power_rotation_vector_relation(r: Rotation, power: float):
     r1 = r ** power
     r2 = r.from_rotation_vector(power * r_vec)
     assert r1.almost_equal(r2)
+
+
+@given(r=RotationStrategy, vector=VectorStrategy | HomogeneousVectorStrategy)
+def test_matmul_vector_round_trip_via_inverse(r: Rotation, vector: Union[VECTOR_T, HOMOGENEOUS_VECTOR_T]):
+    v_rotated = r @ vector
+    v_rotated_back = r.inverse() @ v_rotated
+    assert np.allclose(vector, v_rotated_back, atol=1e6), f"Vector missmatch, diff: {vector - v_rotated_back}"
