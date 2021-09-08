@@ -101,10 +101,13 @@ class Rotation:
         if is_homogeneous and not np.isclose(vector[3], 1, rtol=0):
             raise ValueError(f"{other} has the shape of a homogeneous vector, but the last component is not 1.")
 
-        q_res = self._hamilton_product(self._hamilton_product(self._q, np.r_[0, vector[:3]]), self._q_conjugate)
+        # fast vector rotation algorithm, see
+        # https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles#Vector_rotation
+        t = 2 * np.cross(self._q[1:], vector[:3])
+        v_res = vector[:3] + self._q[0] * t + np.cross(self._q[1:], t)
         if is_homogeneous:
-            return np.r_[q_res[1:], 1.0]
-        return q_res[1:]
+            return np.r_[v_res, 1.0]
+        return v_res
 
     def __pow__(self, power: float) -> "Rotation":
         omega = np.arccos(self._q[0])
