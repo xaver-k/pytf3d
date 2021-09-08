@@ -89,6 +89,12 @@ class Rotation:
     def __matmul__(
         self, other: Union["Rotation", ARRAY_LIKE_1D_T, VECTOR_T, HOMOGENEOUS_VECTOR_T]
     ) -> Union["Rotation", VECTOR_T, HOMOGENEOUS_VECTOR_T]:
+        """
+        multiply the rotation as if it was a rotation matrix, i.e. gives the same result as `r.as_matrix() @ other`, but
+        uses faster implementations
+
+        :param other: 3D coordinate vector, homogenous coordinate vector or Rotation
+        """
 
         # concatenation of rotations
         if isinstance(other, self.__class__):
@@ -110,6 +116,10 @@ class Rotation:
         return v_res
 
     def __pow__(self, power: float) -> "Rotation":
+        """
+        apply power with the same semantics as if it was a rotation matrix, effectively scaling the rotation
+        `power`-times where `power` can be fractional and negative (in which case the rotation is inverted and scaled)
+        """
         omega = np.arccos(self._q[0])
         if np.isclose(omega, 0) or np.isclose(omega, np.pi):
             # only happens if self._q[0] close to -+ 1, so vector part of quaternion is close to (0, 0, 0)
@@ -140,9 +150,7 @@ class Rotation:
         :param matrix: 3x3 rotation matrix or 4x4 homogeneous transformation matrix (of which only the rotation-part
                        will be used)
         """
-        # todo: skipping of check for proper rotation matrix via flag?
-        # todo: see https://upcommons.upc.edu/bitstream/handle/2117/178326/2083-A-Survey-on-the-Computation-of-Quaternions-from-Rotation-Matrices.pdf
-        #       for other, better methods?
+        # todo: skipping of check for proper rotation matrix via flag, as it is expensive?
         m: np.ndarray = np.asanyarray(matrix, dtype=np.float64).squeeze()
         cls._raise_if_not_expected_shape(m, {(3, 3), (4, 4)})
         if not is_rotation_matrix(m[:3, :3]):
@@ -171,6 +179,7 @@ class Rotation:
                     c * (m[0, 2] + m[2, 0]),
                 ]
             )
+
         if m[1, 1] > m[2, 2]:
             c = 0.5 / np.sqrt(1.0 - m[0, 0] + m[1, 1] - m[2, 2])
             return Rotation(
@@ -213,9 +222,6 @@ class Rotation:
         unit_vector = axis_ / axis_norm
         return Rotation((w, s * unit_vector[0], s * unit_vector[1], s * unit_vector[2]))
 
-    # todo: refactor checks, reoccurring code
-    # todo: reject invalid inputs
-    # todo: unittests checking individual values
     @classmethod
     def from_rotation_vector(cls, rotation_vector: Union[VECTOR_T, ARRAY_LIKE_1D_T]) -> "Rotation":
         """
@@ -244,8 +250,12 @@ class Rotation:
     # todo: testing -> matrix shape, homog. matrix last rows, columns, rotation matrix properties, there and back again
     #   check identity, check certain examples
     def as_matrix(self, to_homogeneous_matrix: bool = False) -> Union[ROTATION_MATRIX_T, HOMOGENEOUS_MATRIX_T]:
-        # todo: doc
-        # see https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Quaternion-derived_rotation_matrix
+        """
+        return the matrix representation of this Rotation
+
+        :param to_homogeneous_matrix: if True, return a homogeneous 4x4 rotation matrix, if False return a "normal"
+                                      3x3 rotation matrix
+        """
         w, x, y, z = self._q
 
         # shortcut for identity
@@ -255,6 +265,8 @@ class Rotation:
             else:
                 return np.eye(3)
 
+        # normal conversion path,
+        # see https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation#Quaternion-derived_rotation_matrix
         wx = 2 * w * x
         wy = 2 * w * y
         wz = 2 * w * z
@@ -313,6 +325,9 @@ class Rotation:
         raise NotImplementedError()
 
     def inverse(self) -> "Rotation":
+        """
+        return a new Rotation object, representing the inverse rotation of this Rotation
+        """
         return Rotation(self._q_conjugate)
 
     def almost_equal(self, other: "Rotation", eps: float = 1e-6) -> bool:
