@@ -72,7 +72,7 @@ class Rotation:
 
     @property
     def _q_conjugate(self):
-        return self._q * np.array([1.0, -1.0, -1.0, -1.0])
+        return self._q * np.array([-1.0, 1.0, 1.0, 1.0])
 
     def __repr__(self) -> str:
         return "Rotation({:.8f} | {:.8f}, {:.8f}, {:.8f})".format(*self._q)
