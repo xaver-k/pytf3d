@@ -57,12 +57,14 @@ class Rotation:
 
         # quaternion values are stored internally with the following conventions:
         # * wxyz-order
-        # * w >= 0
+        # * w >= +0
         # * norm(q) == 1 (within numerical accuracy)
         if q_order == QuaternionOrder.XYZW:
             q_ = _xyzw_to_wxyz(q_)
-        if q_[0] < 0:
-            q_ *= -1
+
+        # ensure w > -0 (note the minus sign!)
+        q_ *= np.copysign(1.0, q_[0])
+
         q_norm = np.linalg.norm(q_)
         if np.isclose(q_norm, 0, rtol=0.0, atol=QUATERNION_TOLERANCE):
             raise ValueError(f"Input quaternion has zero length (within tolerance): {q}.")
