@@ -72,6 +72,13 @@ def test_instantiation_with_invalid_values(
         _ = Rotation(invalid_value, quat_order_in)
 
 
+def test_instantiation_with_neg_zero_w():
+    q = [-0.0, 1, 0, 0]
+    r = Rotation(q)
+    q_ret = r.as_quaternion()
+    assert all(q_ret == [0, -1, 0, 0])
+
+
 @given(q=UnitQuaternionStrategy, diff=UnitQuaternionStrategy, diff_norm=st.sampled_from([0, 1e-6]))
 def test_equality_returns_true_for_equality(q: QUATERNION_T, diff: QUATERNION_T, diff_norm: float):
     q_plus_diff = q + diff * diff_norm
