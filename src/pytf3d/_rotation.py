@@ -18,7 +18,7 @@ from pytf3d.typing import (
     VECTOR_T,
 )
 from pytf3d.utils import is_rotation_matrix
-from typing import overload, Sequence, Set, Tuple, Union
+from typing import Generator, Iterable, overload, Sequence, Set, Tuple, Union
 
 import numpy as np
 
@@ -133,8 +133,28 @@ class Rotation:
     def random(self, random_state) -> "Rotation":
         raise NotImplementedError()
 
-    def slerp(self):
-        raise NotImplementedError()
+    # todo: docstring
+    def slerp(self, other: "Rotation", t_range: Iterable[float]) -> Generator["Rotation", None, None]:
+
+        # implement slerp(q_0, q_1, t) = q_0(q_0^-1 q_1))^t from https://en.wikipedia.org/wiki/Slerp#Quaternion_Slerp
+        q0 = self._q
+        q0inv_q1 = self._hamilton_product(self._q_conjugate, other._q)  # pylint: disable=protected-access
+
+        # ensure positive w-part (even if w is -0 !) for correct calculation of omega
+        q0inv_q1 *= np.copysign(1.0, q0inv_q1[0])
+
+        # interpret q0inv_q1 as versor: [cos(omega) | sin(omega) * v], so that we can pre-calculate as many constants
+        # as possible for later power-operations with this quaternion
+        omega = np.arccos(np.clip(q0inv_q1[0], -1, 1))
+
+        if np.isclose(omega, 0) or np.isclose(omega, np.pi):
+            v = np.array([0, 0, 0])
+        else:
+            v = q0inv_q1[1:] / np.sin(omega)
+
+        for t in t_range:
+            q2 = np.r_[np.cos(t * omega), v * np.sin(t * omega)]  # (q_0^-1 q_1))^t
+            yield Rotation(self._hamilton_product(q0, q2))
 
     @staticmethod
     def identity() -> "Rotation":
