@@ -123,7 +123,7 @@ class Rotation:
         `power`-times where `power` can be fractional and negative (in which case the rotation is inverted and scaled)
         """
         omega = np.arccos(self._q[0])
-        if np.isclose(omega, 0) or np.isclose(omega, np.pi):
+        if np.isclose(omega, 0, atol=1e-10) or np.isclose(omega, np.pi, atol=1e-10):
             # only happens if self._q[0] close to -+ 1, so vector part of quaternion is close to (0, 0, 0)
             v = np.array([0, 0, 0])
         else:
@@ -216,7 +216,7 @@ class Rotation:
         cls._raise_if_not_expected_shape(axis_, (3,))
 
         axis_norm = np.linalg.norm(axis_)
-        if np.isclose(axis_norm, 0, rtol=0.0):
+        if np.isclose(axis_norm, 0, rtol=0.0, atol=1e-10):
             raise ValueError(f"Rotation axis must not be of (close to) zero length. Input: {axis}")
 
         s = np.sin(angle / 2)
@@ -236,8 +236,8 @@ class Rotation:
         cls._raise_if_not_expected_shape(rvec, (3,))
 
         angle = float(np.linalg.norm(rvec))
-        if np.isclose(angle, 0, rtol=0.0, atol=1e-12):
-            return cls.from_angle_axis(angle, [1, 0, 0])
+        if np.isclose(angle, 0, rtol=0.0, atol=1e-8):
+            return cls.identity()
         else:
             return cls.from_angle_axis(angle, rvec)  # axis does not need to be normalized, so a factor of angle is fine
 
