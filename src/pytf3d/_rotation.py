@@ -133,8 +133,16 @@ class Rotation:
     def random(self, random_state) -> "Rotation":
         raise NotImplementedError()
 
-    # todo: docstring
     def slerp(self, other: "Rotation", t_range: Iterable[float]) -> Generator["Rotation", None, None]:
+        """
+        spherical linear interpolation between this Rotation and an other Rotation (using the shortest path) at
+        the given values in t_range
+
+        :param other: "endpoint" of interpolation (see also t_range)
+        :param t_range: values at which to interpolate, typically in the range of [0, 1] where 0 produces this Rotation
+                        and 1 produces other Rotation, but values < 0 and > 1 are also valid for extrapolation
+        :return:
+        """
 
         d = self._q @ other._q  # pylint: disable=protected-access
         theta = np.arccos(np.abs(np.clip(d, -1, 1)))  # in 0, pi
