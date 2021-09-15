@@ -24,7 +24,7 @@ from pytf3d.typing import (
     VECTOR_T,
 )
 from pytf3d.utils import is_homogeneous_matrix, is_rotation_matrix
-from typing import Any, Type, Union
+from typing import Any, List, Type, Union
 
 import hypothesis
 import hypothesis.strategies as st
@@ -70,6 +70,13 @@ def test_instantiation_with_invalid_values(
 ):
     with raises(expected_error):
         _ = Rotation(invalid_value, quat_order_in)
+
+
+def test_instantiation_with_neg_zero_w():
+    q = [-0.0, 1, 0, 0]
+    r = Rotation(q)
+    q_ret = r.as_quaternion()
+    assert all(q_ret == [0, -1, 0, 0])
 
 
 @given(q=UnitQuaternionStrategy, diff=UnitQuaternionStrategy, diff_norm=st.sampled_from([0, 1e-6]))
@@ -377,3 +384,45 @@ def test_matmul_vector_round_trip_via_inverse(r: Rotation, vector: Union[VECTOR_
     v_rotated = r @ vector
     v_rotated_back = r.inverse() @ v_rotated
     assert np.allclose(vector, v_rotated_back, atol=1e6), f"Vector missmatch, diff: {vector - v_rotated_back}"
+
+
+@given(r1=RotationStrategy, r2=RotationStrategy)
+@example(r1=Rotation([0, 1, 1, 0]), r2=Rotation([0, 1, 1, 0]))  # both are the same -> zero difference
+@mark.parametrize(
+    ["t_range"],
+    [
+        [[0, 1]],
+        [[0, 0.5, 1]],
+        [[0, 0.1, 0.2, 0.4, 0.8, 1]],
+    ],
+)
+def test_slerp_start_end_and_length(r1: Rotation, r2: Rotation, t_range: List[float]):
+    # just ensure that we did not set up an unsupported testcase
+    assert t_range[0] == 0
+    assert t_range[-1] == 1
+
+    # actual test
+    slerp_lst = list(r1.slerp(r2, t_range))
+    assert len(slerp_lst) == len(t_range)
+    assert r1.almost_equal(slerp_lst[0])
+    assert r2.almost_equal(slerp_lst[-1])
+
+
+@given(r=RotationStrategy, t_range=st.lists(st.floats(1e-6, 1e6, allow_nan=False), max_size=100))
+def test_slerp_around_identity_gives_same_result_as_power(r: Rotation, t_range: List[float]):
+    # Note that we need to use lists (or any other sequence type) to get fixed iteration order and being able to iterate
+    # over the input in the for-loop BOTH in the t_range and the slerp object
+    slerp = Rotation.identity().slerp(r, t_range)
+    for t, r_slerp in zip(t_range, slerp):
+        r_from_pow = r ** t
+        assert r_slerp.almost_equal(r_from_pow)
+
+
+@given(r1=RotationStrategy, r2=RotationStrategy, t_range=st.lists(st.floats(1e-6, 1e6, allow_nan=False), max_size=100))
+def test_slerp_values(r1: Rotation, r2: Rotation, t_range: List[float]):
+    # note: use list as we need to iterate over the t_range multiple times
+    slerp_lst = list(r1.slerp(r2, t_range))
+    r_diff = r2 @ r1.inverse()
+    manual_slerp = [r_diff ** t @ r1 for t in t_range]
+    for r_slerp, r_manual in zip(slerp_lst, manual_slerp):
+        assert r_slerp.almost_equal(r_manual)

@@ -18,7 +18,7 @@ from pytf3d.typing import (
     VECTOR_T,
 )
 from pytf3d.utils import is_rotation_matrix
-from typing import overload, Sequence, Set, Tuple, Union
+from typing import Generator, Iterable, overload, Sequence, Set, Tuple, Union
 
 import numpy as np
 
@@ -57,12 +57,14 @@ class Rotation:
 
         # quaternion values are stored internally with the following conventions:
         # * wxyz-order
-        # * w >= 0
+        # * w >= +0
         # * norm(q) == 1 (within numerical accuracy)
         if q_order == QuaternionOrder.XYZW:
             q_ = _xyzw_to_wxyz(q_)
-        if q_[0] < 0:
-            q_ *= -1
+
+        # ensure w > -0 (note the minus sign!)
+        q_ *= np.copysign(1.0, q_[0])
+
         q_norm = np.linalg.norm(q_)
         if np.isclose(q_norm, 0, rtol=0.0, atol=QUATERNION_TOLERANCE):
             raise ValueError(f"Input quaternion has zero length (within tolerance): {q}.")
@@ -70,7 +72,7 @@ class Rotation:
 
     @property
     def _q_conjugate(self):
-        return self._q * np.array([1.0, -1.0, -1.0, -1.0])
+        return self._q * np.array([-1.0, 1.0, 1.0, 1.0])
 
     def __repr__(self) -> str:
         return "Rotation({:.8f} | {:.8f}, {:.8f}, {:.8f})".format(*self._q)
@@ -121,7 +123,7 @@ class Rotation:
         `power`-times where `power` can be fractional and negative (in which case the rotation is inverted and scaled)
         """
         omega = np.arccos(self._q[0])
-        if np.isclose(omega, 0) or np.isclose(omega, np.pi):
+        if np.isclose(omega, 0, atol=1e-10) or np.isclose(omega, np.pi, atol=1e-10):
             # only happens if self._q[0] close to -+ 1, so vector part of quaternion is close to (0, 0, 0)
             v = np.array([0, 0, 0])
         else:
@@ -131,8 +133,33 @@ class Rotation:
     def random(self, random_state) -> "Rotation":
         raise NotImplementedError()
 
-    def slerp(self):
-        raise NotImplementedError()
+    def slerp(self, other: "Rotation", t_range: Iterable[float]) -> Generator["Rotation", None, None]:
+        """
+        spherical linear interpolation between this Rotation and an other Rotation (using the shortest path) at
+        the given values in t_range
+
+        :param other: "endpoint" of interpolation (see also t_range)
+        :param t_range: values at which to interpolate, typically in the range of [0, 1] where 0 produces this Rotation
+                        and 1 produces other Rotation, but values < 0 and > 1 are also valid for extrapolation
+        :return:
+        """
+
+        d = self._q @ other._q  # pylint: disable=protected-access
+        theta = np.arccos(np.abs(np.clip(d, -1, 1)))  # in 0, pi
+        sin_theta = np.sin(theta)
+
+        # special case where interpolation does not make sense
+        if np.isclose(sin_theta, 0, atol=1e-10):
+            for _ in t_range:
+                yield Rotation(self._q)
+            return
+
+        # ensure shortest way interpolation by flipping sign for negative d (including d = -0)
+        q_self_for_calc = self._q * np.copysign(1.0, d)
+        for t in t_range:
+            # pylint: disable=protected-access
+            q_slerp = (np.sin((1 - t) * theta) * q_self_for_calc + np.sin(t * theta) * other._q) / sin_theta
+            yield Rotation(q_slerp)
 
     @staticmethod
     def identity() -> "Rotation":
@@ -214,7 +241,7 @@ class Rotation:
         cls._raise_if_not_expected_shape(axis_, (3,))
 
         axis_norm = np.linalg.norm(axis_)
-        if np.isclose(axis_norm, 0, rtol=0.0):
+        if np.isclose(axis_norm, 0, rtol=0.0, atol=1e-10):
             raise ValueError(f"Rotation axis must not be of (close to) zero length. Input: {axis}")
 
         s = np.sin(angle / 2)
@@ -234,8 +261,8 @@ class Rotation:
         cls._raise_if_not_expected_shape(rvec, (3,))
 
         angle = float(np.linalg.norm(rvec))
-        if np.isclose(angle, 0, rtol=0.0, atol=1e-12):
-            return cls.from_angle_axis(angle, [1, 0, 0])
+        if np.isclose(angle, 0, rtol=0.0, atol=1e-8):
+            return cls.identity()
         else:
             return cls.from_angle_axis(angle, rvec)  # axis does not need to be normalized, so a factor of angle is fine
 
