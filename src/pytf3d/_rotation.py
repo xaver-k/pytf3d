@@ -136,25 +136,22 @@ class Rotation:
     # todo: docstring
     def slerp(self, other: "Rotation", t_range: Iterable[float]) -> Generator["Rotation", None, None]:
 
-        # implement slerp(q_0, q_1, t) = q_0(q_0^-1 q_1))^t from https://en.wikipedia.org/wiki/Slerp#Quaternion_Slerp
-        q0 = self._q
-        q0inv_q1 = self._hamilton_product(self._q_conjugate, other._q)  # pylint: disable=protected-access
+        d = self._q @ other._q  # pylint: disable=protected-access
+        theta = np.arccos(np.abs(np.clip(d, -1, 1)))  # in 0, pi
+        sin_theta = np.sin(theta)
 
-        # ensure positive w-part (even if w is -0 !) for correct calculation of omega
-        q0inv_q1 *= np.copysign(1.0, q0inv_q1[0])
+        # special case where interpolation does not make sense
+        if np.isclose(sin_theta, 0, atol=1e-10):
+            for _ in t_range:
+                yield Rotation(self._q)
+            return
 
-        # interpret q0inv_q1 as versor: [cos(omega) | sin(omega) * v], so that we can pre-calculate as many constants
-        # as possible for later power-operations with this quaternion
-        omega = np.arccos(np.clip(q0inv_q1[0], -1, 1))
-
-        if np.isclose(omega, 0) or np.isclose(omega, np.pi):
-            v = np.array([0, 0, 0])
-        else:
-            v = q0inv_q1[1:] / np.sin(omega)
-
+        # ensure shortest way interpolation by flipping sign for negative d (including d = -0)
+        q_self_for_calc = self._q * np.copysign(1.0, d)
         for t in t_range:
-            q2 = np.r_[np.cos(t * omega), v * np.sin(t * omega)]  # (q_0^-1 q_1))^t
-            yield Rotation(self._hamilton_product(q0, q2))
+            # pylint: disable=protected-access
+            q_slerp = (np.sin((1 - t) * theta) * q_self_for_calc + np.sin(t * theta) * other._q) / sin_theta
+            yield Rotation(q_slerp)
 
     @staticmethod
     def identity() -> "Rotation":
