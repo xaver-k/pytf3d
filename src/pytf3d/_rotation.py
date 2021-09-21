@@ -267,8 +267,29 @@ class Rotation:
             return cls.from_angle_axis(angle, rvec)  # axis does not need to be normalized, so a factor of angle is fine
 
     @classmethod
-    def from_euler(cls, euler_angles: Sequence[float], axes: str) -> "Rotation":
-        raise NotImplementedError()
+    def from_euler(cls, angles: Union[VECTOR_T, ARRAY_LIKE_1D_T], sequence: str) -> "Rotation":
+        angles_: VECTOR_T = np.asarray(angles, dtype=np.float64).squeeze()
+        cls._raise_if_not_expected_shape(angles_, (3,))
+        cls._raise_for_invalid_euler_angle_sequence(sequence)
+        is_intrinsic_rotation = sequence[0] == "i"
+        if is_intrinsic_rotation:
+            rotation_seq = sequence[1:]
+        else:
+            rotation_seq = sequence[-1:0:-1]
+            angles_ = angles_[::-1]
+
+        AXES = {
+            "x": [1, 0, 0],
+            "y": [0, 1, 0],
+            "z": [0, 0, 1],
+        }
+
+        # TODO: implement more efficiently?
+        return (
+            cls.from_angle_axis(angles_[0], AXES[rotation_seq[0]])
+            @ cls.from_angle_axis(angles_[1], AXES[rotation_seq[1]])
+            @ cls.from_angle_axis(angles_[2], AXES[rotation_seq[2]])
+        )
 
     @classmethod
     def from_rpy(cls, rpy: Sequence[float]) -> "Rotation":
@@ -386,3 +407,25 @@ class Rotation:
             (r1 * r2 - v1 @ v2,),  # w-part
             r1 * v2 + r2 * v1 + np.cross(v1, v2),  # xyz-part
         ]
+
+    @classmethod
+    def _raise_for_invalid_euler_angle_sequence(cls, sequence: str) -> None:
+        VALID_REFERENCE_FRAMES = {*"ei"}
+        VALID_AXES = {*"xyz"}
+
+        if len(sequence) != 4:
+            raise ValueError(f"Invalid euler angle sequence '{sequence}', must be exactly 4 characters.")
+        if sequence[0] not in VALID_REFERENCE_FRAMES:
+            raise ValueError(
+                f"Invalid reference frame specifier for euler angle sequence at position 0: '{sequence}', "
+                f"must be either 'e' for extrinsic or 'i' for intrinsic rotations."
+            )
+        invalid_axes = {*sequence[1:]}.difference(VALID_AXES)
+        if invalid_axes:
+            raise ValueError(
+                f"Invalid axis specifier(s) for euler angle sequence: {invalid_axes}, must be one of {VALID_AXES}."
+            )
+        if sequence[1] == sequence[2] or sequence[2] == sequence[3]:
+            # todo: do we need to check for this? It is only a "courtesy", the rest of the code will still work, even
+            #   if this condition is not met
+            raise ValueError(f"Invalid axis sequence '{sequence}', consecutive axes must be different.")
