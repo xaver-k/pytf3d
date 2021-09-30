@@ -364,8 +364,84 @@ class Rotation:
         angle, axis = self.as_angle_axis()
         return angle * axis
 
-    def as_euler(self, axes: str) -> np.ndarray:
-        raise NotImplementedError()
+    # TODO: document rotation sequence string
+    # TODO: document and test return value ranges
+    def as_euler(self, sequence: str) -> np.ndarray:
+        """
+        return the Euler angles / Tait-Bryan angles that describe the given rotation
+
+        :param sequence: desired rotation sequence for the angles
+        :return: angles corresponding to the axes given in the `sequence`-parameter, e.g.:
+                 * if sequence="ixzy", will return [angle_x, angle_z, angle_y]
+                 * if sequence="ezxy", will return [angle_z, angle_x, angle_y]
+        """
+
+        # algorithm from:
+        # Shuster, Malcolm & Markley, Landis. (2006).
+        # General Formula for Extracting the Euler Angles.
+        # Journal of Guidance Control and Dynamics - 29. 215-221.
+        # DOI:10.2514/1.16622.
+        # https://www.researchgate.net/publication/238189035_General_Formula_for_Extracting_the_Euler_Angles
+
+        # todo: remove code duplication for axis extraction
+        AXES = {
+            "x": [1, 0, 0],
+            "y": [0, 1, 0],
+            "z": [0, 0, 1],
+        }
+
+        self._raise_for_invalid_euler_angle_sequence(sequence)
+        intrinsic = sequence[0] == "i"
+
+        # the below algorithm assumes intrinsic rotation order, invert order for extrinsic rotations
+        multiplication_sequence = sequence[1:] if intrinsic else sequence[-1:0:-1]
+        axes = np.array([AXES[axis_label] for axis_label in multiplication_sequence])
+
+        D = self.as_matrix().transpose()  # because paper uses transposed matrices
+
+        # eq. (5), because we use only orthonormal axes, possible values are [-pi/2, 0, pi/2, pi]
+        lambd = np.arctan2(np.dot(np.cross(axes[0], axes[1]), axes[2]), np.dot(axes[0], axes[2]))
+
+        # eq. (6), due to row first ordering, the array is already transposed
+        C = np.array([axes[1], np.cross(axes[0], axes[1]), axes[0]])
+
+        # eq. (7)
+        R_transposed = Rotation.from_angle_axis(lambd, [1, 0, 0]).as_matrix()
+        O = R_transposed @ C @ D @ C.transpose()
+
+        # eq. (10a)
+        theta = lambd + np.arccos(np.clip(O[2, 2], -1, 1))
+
+        # conditions for eq. (10b) and (10c)
+        eps = 1e-6
+        cond_1 = np.abs(theta - lambd) >= eps
+        cond_2 = np.abs(theta - lambd - np.pi) >= eps
+
+        if cond_1 and cond_2:
+            # good observability
+            # eq. (10a) and (10b)
+            phi = np.arctan2(O[2, 0], -O[2, 1])
+            psi = np.arctan2(O[0, 2], O[1, 2])
+        else:
+            # gimbal lock, set psi to 0
+            psi = 0
+            if not cond_1:
+                # equation (11a)
+                phi = np.arctan2(O[0, 1] - O[1, 0], O[0, 0] + O[1, 1])
+            else:
+                # equation (11b)
+                phi = np.arctan2(O[0, 1] + O[1, 0], O[0, 0] - O[1, 1])
+
+        # adjust angles
+        # desired ranges: [-pi...pi, -pi/2...pi/2, -pi...pi]
+        if not -np.pi / 2 <= theta < np.pi / 2:
+            phi, theta, psi = np.array([phi + np.pi, 2 * lambd - theta, psi - np.pi]) % (2 * np.pi)
+
+        if intrinsic:
+            return np.array([phi, theta, psi])
+        else:
+            # reverse returned angles for extrinsic rotation
+            return np.array([psi, theta, phi])
 
     def as_rpy(self) -> np.ndarray:
         raise NotImplementedError()
