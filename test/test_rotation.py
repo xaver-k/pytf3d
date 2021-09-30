@@ -483,8 +483,16 @@ def test_as_euler_examples(r: Rotation, sequence: str, expected: List[float]):
 
 
 @given(r=RotationStrategy, seq=EulerAngleSequence)
+def test_as_euler_return_range(r: Rotation, seq: str):
+    EPS = 1e-5
+    angles = r.as_euler(seq)
+    assert -np.pi - EPS <= angles[0] <= np.pi + EPS
+    assert -np.pi - EPS <= angles[1] <= np.pi + EPS
+    assert -np.pi - EPS <= angles[2] <= np.pi + EPS
+
+
+@given(r=RotationStrategy, seq=EulerAngleSequence)
 def test_euler_angles_round_trip(r: Rotation, seq: str):
-    print(seq)
     euler_angles = r.as_euler(seq)
     r_from_angles = Rotation.from_euler(euler_angles, seq)
     assert r.almost_equal(r_from_angles, eps=1e-4)  # TODO: eps settings vs. numerical issues?

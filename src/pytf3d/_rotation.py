@@ -365,7 +365,6 @@ class Rotation:
         return angle * axis
 
     # TODO: document rotation sequence string
-    # TODO: document and test return value ranges
     def as_euler(self, sequence: str) -> np.ndarray:
         """
         return the Euler angles / Tait-Bryan angles that describe the given rotation
@@ -374,6 +373,7 @@ class Rotation:
         :return: angles corresponding to the axes given in the `sequence`-parameter, e.g.:
                  * if sequence="ixzy", will return [angle_x, angle_z, angle_y]
                  * if sequence="ezxy", will return [angle_z, angle_x, angle_y]
+                 all angles are guaranteed to be in the range (-pi, pi)
         """
 
         # algorithm from:
@@ -432,16 +432,30 @@ class Rotation:
                 # equation (11b)
                 phi = np.arctan2(O[0, 1] + O[1, 0], O[0, 0] - O[1, 1])
 
-        # adjust angles
-        # desired ranges: [-pi...pi, -pi/2...pi/2, -pi...pi]
-        if not -np.pi / 2 <= theta < np.pi / 2:
-            phi, theta, psi = np.array([phi + np.pi, 2 * lambd - theta, psi - np.pi]) % (2 * np.pi)
+        # handle edge-cases of theta range
+        if np.isclose(theta, 0):
+            theta = 0
+        if np.isclose(theta, np.pi):
+            theta = np.pi
+
+        # adjust angle ranges if possible
+        if not np.isclose(lambd, 0) and not 0 <= theta < np.pi:
+            angles = np.mod(np.array([phi + np.pi, 2 * lambd - theta, psi - np.pi]), (2 * np.pi))
+            # modulo operations do not catch values close to 2 pi
+            close_to_2_pi = np.logical_or(np.isclose(angles, -2 * np.pi), np.isclose(angles, 2 * np.pi))
+            angles[close_to_2_pi] = 0.0
+        else:
+            angles = np.array([phi, theta, psi])
+
+        # ensure range -pi ... pi
+        angles[angles < np.pi] += 2 * np.pi
+        angles[angles > np.pi] -= 2 * np.pi
 
         if intrinsic:
-            return np.array([phi, theta, psi])
+            return angles
         else:
             # reverse returned angles for extrinsic rotation
-            return np.array([psi, theta, phi])
+            return angles[::-1]
 
     def as_rpy(self) -> np.ndarray:
         raise NotImplementedError()
