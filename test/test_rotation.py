@@ -454,3 +454,53 @@ def test_slerp_values(r1: Rotation, r2: Rotation, t_range: List[float]):
 def test_from_euler_examples(euler_angles: List[float], sequence: str, expected: Rotation, eps: float = 1e-3):
     r = Rotation.from_euler(euler_angles, sequence)
     assert r.almost_equal(expected, eps)
+
+
+@mark.parametrize(
+    ["r", "sequence", "expected"],
+    [
+        # NOTE: test cases are brittle, as Euler angles are not unique
+        # # single axis rotations
+        [Rotation.from_angle_axis(np.pi, [1, 0, 0]), "exyz", [np.pi, 0, 0]],
+        [Rotation.from_angle_axis(np.pi, [0, 1, 0]), "exyz", [np.pi, 0, np.pi]],  # equal to [0, pi, 0]
+        [Rotation.from_angle_axis(np.pi, [0, 0, 1]), "exyz", [0, 0, np.pi]],
+        [Rotation.from_angle_axis(np.pi, [1, 0, 0]), "ixyz", [np.pi, 0, 0]],
+        [Rotation.from_angle_axis(np.pi / 2, [1, 0, 0]), "ixyz", [np.pi / 2, 0, 0]],
+        [Rotation.from_angle_axis(np.pi, [0, 1, 0]), "ixyz", [np.pi, 0, np.pi]],  # equal to [0, pi, 0]
+        [Rotation.from_angle_axis(np.pi, [0, 0, 1]), "ixyz", [0, 0, np.pi]],
+        # identity, no matter what rotation order should give 0-angles
+        [Rotation.identity(), "ixyz", [0, 0, 0]],
+        [Rotation.identity(), "exyz", [0, 0, 0]],
+        [Rotation.identity(), "ezyx", [0, 0, 0]],
+        [Rotation.identity(), "exzx", [0, 0, 0]],
+        [Rotation.identity(), "eyzx", [0, 0, 0]],
+    ],
+)
+def test_as_euler_examples(r: Rotation, sequence: str, expected: List[float]):
+    euler_angles = r.as_euler(sequence)
+    assert np.allclose(euler_angles, np.array(expected))
+
+
+# TODO: generalize sequence / make strategy
+@given(r=RotationStrategy)
+@example(r=Rotation([1, 0, 0, 0]))
+@example(r=Rotation([0.41236532, -0.00000000, -0.00000000, -0.91101858]))
+@example(r=Rotation([1 / np.sqrt(2), 0, 0, 1 / np.sqrt(2)]))
+@example(r=Rotation([0, 1, 0, 0]))
+@example(r=Rotation([0, 0, 1, 0]))
+@example(r=Rotation([0, 0, 0, 1]))
+@example(r=Rotation([0, 0, 1, 1]))
+@mark.parametrize(
+    ["sequence"],
+    [
+        ["exyz"],
+        ["ezyx"],
+        ["ixyz"],
+        ["izyx"],
+        ["izyz"],
+    ],
+)
+def test_euler_angles_round_trip(r: Rotation, sequence: str):
+    euler_angles = r.as_euler(sequence)
+    r_from_angles = Rotation.from_euler(euler_angles, sequence)
+    assert r.almost_equal(r_from_angles, eps=1e-4)  # TODO: eps settings vs. numerical issues?
