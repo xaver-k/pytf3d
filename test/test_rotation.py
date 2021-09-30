@@ -9,6 +9,7 @@ from hypothesis import assume, example, given, settings
 from pytest import mark, raises
 from pytf3d import QuaternionOrder, Rotation
 from pytf3d.testing import (
+    EulerAngleSequence,
     HomogeneousVectorStrategy,
     QuaternionStrategy,
     RotationStrategy,
@@ -426,3 +427,72 @@ def test_slerp_values(r1: Rotation, r2: Rotation, t_range: List[float]):
     manual_slerp = [r_diff ** t @ r1 for t in t_range]
     for r_slerp, r_manual in zip(slerp_lst, manual_slerp):
         assert r_slerp.almost_equal(r_manual)
+
+
+@mark.parametrize(
+    ["euler_angles", "sequence", "expected"],
+    [
+        # single axis rotations
+        [(np.pi, 0, 0), "exyz", Rotation.from_angle_axis(np.pi, [1, 0, 0])],
+        [(0, np.pi, 0), "exyz", Rotation.from_angle_axis(np.pi, [0, 1, 0])],
+        [(0, 0, np.pi), "exyz", Rotation.from_angle_axis(np.pi, [0, 0, 1])],
+        [(np.pi, 0, 0), "ixyz", Rotation.from_angle_axis(np.pi, [1, 0, 0])],
+        [(0, np.pi, 0), "ixyz", Rotation.from_angle_axis(np.pi, [0, 1, 0])],
+        [(0, 0, np.pi), "ixyz", Rotation.from_angle_axis(np.pi, [0, 0, 1])],
+        # multi-axis rotations giving identity
+        [(np.pi, np.pi, np.pi), "exyz", Rotation.identity()],
+        [(np.pi, np.pi, np.pi), "ixyz", Rotation.identity()],
+        # arbitrary multi-axis rotations
+        [(np.pi / 2, np.pi / 2, 0), "ixyz", Rotation([0.5, 0.5, 0.5, 0.5])],
+        [(np.pi / 2, np.pi / 2, 0), "exyz", Rotation([0.5, 0.5, 0.5, -0.5])],
+        [(np.pi / 2, 0, np.pi / 2), "ixyz", Rotation([0.5, 0.5, -0.5, 0.5])],
+        [(np.pi / 2, 0, np.pi / 2), "exyz", Rotation([0.5, 0.5, 0.5, 0.5])],
+        # examples taken from https://quaternions.online/
+        [np.deg2rad([30, 45, 60]), "izyx", Rotation([0.822, 0.360, 0.440, 0.022])],
+        [np.deg2rad([60, 30, 45]), "iyzx", Rotation([0.723, 0.440, 0.532, 0.022])],
+    ],
+)
+def test_from_euler_examples(euler_angles: List[float], sequence: str, expected: Rotation, eps: float = 1e-3):
+    r = Rotation.from_euler(euler_angles, sequence)
+    assert r.almost_equal(expected, eps)
+
+
+@mark.parametrize(
+    ["r", "sequence", "expected"],
+    [
+        # NOTE: test cases are brittle, as Euler angles are not unique
+        # # single axis rotations
+        [Rotation.from_angle_axis(np.pi, [1, 0, 0]), "exyz", [np.pi, 0, 0]],
+        [Rotation.from_angle_axis(np.pi, [0, 1, 0]), "exyz", [np.pi, 0, np.pi]],  # equal to [0, pi, 0]
+        [Rotation.from_angle_axis(np.pi, [0, 0, 1]), "exyz", [0, 0, np.pi]],
+        [Rotation.from_angle_axis(np.pi, [1, 0, 0]), "ixyz", [np.pi, 0, 0]],
+        [Rotation.from_angle_axis(np.pi / 2, [1, 0, 0]), "ixyz", [np.pi / 2, 0, 0]],
+        [Rotation.from_angle_axis(np.pi, [0, 1, 0]), "ixyz", [np.pi, 0, np.pi]],  # equal to [0, pi, 0]
+        [Rotation.from_angle_axis(np.pi, [0, 0, 1]), "ixyz", [0, 0, np.pi]],
+        # identity, no matter what rotation order should give 0-angles
+        [Rotation.identity(), "ixyz", [0, 0, 0]],
+        [Rotation.identity(), "exyz", [0, 0, 0]],
+        [Rotation.identity(), "ezyx", [0, 0, 0]],
+        [Rotation.identity(), "exzx", [0, 0, 0]],
+        [Rotation.identity(), "eyzx", [0, 0, 0]],
+    ],
+)
+def test_as_euler_examples(r: Rotation, sequence: str, expected: List[float]):
+    euler_angles = r.as_euler(sequence)
+    assert np.allclose(euler_angles, np.array(expected))
+
+
+@given(r=RotationStrategy, seq=EulerAngleSequence)
+def test_as_euler_return_range(r: Rotation, seq: str):
+    EPS = 1e-5
+    angles = r.as_euler(seq)
+    assert -np.pi - EPS <= angles[0] <= np.pi + EPS
+    assert -np.pi - EPS <= angles[1] <= np.pi + EPS
+    assert -np.pi - EPS <= angles[2] <= np.pi + EPS
+
+
+@given(r=RotationStrategy, seq=EulerAngleSequence)
+def test_euler_angles_round_trip(r: Rotation, seq: str):
+    euler_angles = r.as_euler(seq)
+    r_from_angles = Rotation.from_euler(euler_angles, seq)
+    assert r.almost_equal(r_from_angles, eps=1e-4)  # TODO: eps settings vs. numerical issues?

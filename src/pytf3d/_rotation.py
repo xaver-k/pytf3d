@@ -267,8 +267,29 @@ class Rotation:
             return cls.from_angle_axis(angle, rvec)  # axis does not need to be normalized, so a factor of angle is fine
 
     @classmethod
-    def from_euler(cls, euler_angles: Sequence[float], axes: str) -> "Rotation":
-        raise NotImplementedError()
+    def from_euler(cls, angles: Union[VECTOR_T, ARRAY_LIKE_1D_T], sequence: str) -> "Rotation":
+        angles_: VECTOR_T = np.asarray(angles, dtype=np.float64).squeeze()
+        cls._raise_if_not_expected_shape(angles_, (3,))
+        cls._raise_for_invalid_euler_angle_sequence(sequence)
+        is_intrinsic_rotation = sequence[0] == "i"
+        if is_intrinsic_rotation:
+            rotation_seq = sequence[1:]
+        else:
+            rotation_seq = sequence[-1:0:-1]
+            angles_ = angles_[::-1]
+
+        AXES = {
+            "x": [1, 0, 0],
+            "y": [0, 1, 0],
+            "z": [0, 0, 1],
+        }
+
+        # TODO: implement more efficiently?
+        return (
+            cls.from_angle_axis(angles_[0], AXES[rotation_seq[0]])
+            @ cls.from_angle_axis(angles_[1], AXES[rotation_seq[1]])
+            @ cls.from_angle_axis(angles_[2], AXES[rotation_seq[2]])
+        )
 
     @classmethod
     def from_rpy(cls, rpy: Sequence[float]) -> "Rotation":
@@ -343,8 +364,98 @@ class Rotation:
         angle, axis = self.as_angle_axis()
         return angle * axis
 
-    def as_euler(self, axes: str) -> np.ndarray:
-        raise NotImplementedError()
+    # TODO: document rotation sequence string
+    def as_euler(self, sequence: str) -> np.ndarray:
+        """
+        return the Euler angles / Tait-Bryan angles that describe the given rotation
+
+        :param sequence: desired rotation sequence for the angles
+        :return: angles corresponding to the axes given in the `sequence`-parameter, e.g.:
+                 * if sequence="ixzy", will return [angle_x, angle_z, angle_y]
+                 * if sequence="ezxy", will return [angle_z, angle_x, angle_y]
+                 all angles are guaranteed to be in the range (-pi, pi)
+        """
+
+        # algorithm from:
+        # Shuster, Malcolm & Markley, Landis. (2006).
+        # General Formula for Extracting the Euler Angles.
+        # Journal of Guidance Control and Dynamics - 29. 215-221.
+        # DOI:10.2514/1.16622.
+        # https://www.researchgate.net/publication/238189035_General_Formula_for_Extracting_the_Euler_Angles
+
+        # todo: remove code duplication for axis extraction
+        AXES = {
+            "x": [1, 0, 0],
+            "y": [0, 1, 0],
+            "z": [0, 0, 1],
+        }
+
+        self._raise_for_invalid_euler_angle_sequence(sequence)
+        intrinsic = sequence[0] == "i"
+
+        # the below algorithm assumes intrinsic rotation order, invert order for extrinsic rotations
+        multiplication_sequence = sequence[1:] if intrinsic else sequence[-1:0:-1]
+        axes = np.array([AXES[axis_label] for axis_label in multiplication_sequence])
+
+        D = self.as_matrix().transpose()  # because paper uses transposed matrices
+
+        # eq. (5), because we use only orthonormal axes, possible values are [-pi/2, 0, pi/2, pi]
+        lambd = np.arctan2(np.dot(np.cross(axes[0], axes[1]), axes[2]), np.dot(axes[0], axes[2]))
+
+        # eq. (6), due to row first ordering, the array is already transposed
+        C = np.array([axes[1], np.cross(axes[0], axes[1]), axes[0]])
+
+        # eq. (7)
+        R_transposed = Rotation.from_angle_axis(lambd, [1, 0, 0]).as_matrix()
+        O = R_transposed @ C @ D @ C.transpose()
+
+        # eq. (10a)
+        theta = lambd + np.arccos(np.clip(O[2, 2], -1, 1))
+
+        # conditions for eq. (10b) and (10c)
+        eps = 1e-6
+        cond_1 = np.abs(theta - lambd) >= eps
+        cond_2 = np.abs(theta - lambd - np.pi) >= eps
+
+        if cond_1 and cond_2:
+            # good observability
+            # eq. (10a) and (10b)
+            phi = np.arctan2(O[2, 0], -O[2, 1])
+            psi = np.arctan2(O[0, 2], O[1, 2])
+        else:
+            # gimbal lock, set psi to 0
+            psi = 0
+            if not cond_1:
+                # equation (11a)
+                phi = np.arctan2(O[0, 1] - O[1, 0], O[0, 0] + O[1, 1])
+            else:
+                # equation (11b)
+                phi = np.arctan2(O[0, 1] + O[1, 0], O[0, 0] - O[1, 1])
+
+        # handle edge-cases of theta range
+        if np.isclose(theta, 0):
+            theta = 0
+        if np.isclose(theta, np.pi):
+            theta = np.pi
+
+        # adjust angle ranges if possible
+        if not np.isclose(lambd, 0) and not 0 <= theta < np.pi:
+            angles = np.mod(np.array([phi + np.pi, 2 * lambd - theta, psi - np.pi]), (2 * np.pi))
+            # modulo operations do not catch values close to 2 pi
+            close_to_2_pi = np.logical_or(np.isclose(angles, -2 * np.pi), np.isclose(angles, 2 * np.pi))
+            angles[close_to_2_pi] = 0.0
+        else:
+            angles = np.array([phi, theta, psi])
+
+        # ensure range -pi ... pi
+        angles[angles < np.pi] += 2 * np.pi
+        angles[angles > np.pi] -= 2 * np.pi
+
+        if intrinsic:
+            return angles
+        else:
+            # reverse returned angles for extrinsic rotation
+            return angles[::-1]
 
     def as_rpy(self) -> np.ndarray:
         raise NotImplementedError()
@@ -386,3 +497,25 @@ class Rotation:
             (r1 * r2 - v1 @ v2,),  # w-part
             r1 * v2 + r2 * v1 + np.cross(v1, v2),  # xyz-part
         ]
+
+    @classmethod
+    def _raise_for_invalid_euler_angle_sequence(cls, sequence: str) -> None:
+        VALID_REFERENCE_FRAMES = {*"ei"}
+        VALID_AXES = {*"xyz"}
+
+        if len(sequence) != 4:
+            raise ValueError(f"Invalid euler angle sequence '{sequence}', must be exactly 4 characters.")
+        if sequence[0] not in VALID_REFERENCE_FRAMES:
+            raise ValueError(
+                f"Invalid reference frame specifier for euler angle sequence at position 0: '{sequence}', "
+                f"must be either 'e' for extrinsic or 'i' for intrinsic rotations."
+            )
+        invalid_axes = {*sequence[1:]}.difference(VALID_AXES)
+        if invalid_axes:
+            raise ValueError(
+                f"Invalid axis specifier(s) for euler angle sequence: {invalid_axes}, must be one of {VALID_AXES}."
+            )
+        if sequence[1] == sequence[2] or sequence[2] == sequence[3]:
+            # todo: do we need to check for this? It is only a "courtesy", the rest of the code will still work, even
+            #   if this condition is not met
+            raise ValueError(f"Invalid axis sequence '{sequence}', consecutive axes must be different.")
