@@ -45,3 +45,8 @@ VectorStrategy = arrays(np.float64, (3,), elements=st.floats(-1e-12, 1e12, allow
 HomogeneousVectorStrategy = arrays(np.float64, (4,), elements=st.floats(-1e-12, 1e12, allow_nan=False)).map(
     _set_last_value_to_1
 )
+
+
+EulerAngleSequence = st.from_regex(r"[ie][xyz]{3}", fullmatch=True).filter(
+    lambda seq: seq[1] != seq[2] and seq[2] != seq[3]
+)

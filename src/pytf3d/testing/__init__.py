@@ -11,6 +11,7 @@ except ModuleNotFoundError:
     pass
 else:
     from ._strategies import (
+        EulerAngleSequence,
         HomogeneousVectorStrategy,
         QuaternionStrategy,
         RotationStrategy,

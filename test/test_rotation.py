@@ -9,6 +9,7 @@ from hypothesis import assume, example, given, settings
 from pytest import mark, raises
 from pytf3d import QuaternionOrder, Rotation
 from pytf3d.testing import (
+    EulerAngleSequence,
     HomogeneousVectorStrategy,
     QuaternionStrategy,
     RotationStrategy,
@@ -481,26 +482,9 @@ def test_as_euler_examples(r: Rotation, sequence: str, expected: List[float]):
     assert np.allclose(euler_angles, np.array(expected))
 
 
-# TODO: generalize sequence / make strategy
-@given(r=RotationStrategy)
-@example(r=Rotation([1, 0, 0, 0]))
-@example(r=Rotation([0.41236532, -0.00000000, -0.00000000, -0.91101858]))
-@example(r=Rotation([1 / np.sqrt(2), 0, 0, 1 / np.sqrt(2)]))
-@example(r=Rotation([0, 1, 0, 0]))
-@example(r=Rotation([0, 0, 1, 0]))
-@example(r=Rotation([0, 0, 0, 1]))
-@example(r=Rotation([0, 0, 1, 1]))
-@mark.parametrize(
-    ["sequence"],
-    [
-        ["exyz"],
-        ["ezyx"],
-        ["ixyz"],
-        ["izyx"],
-        ["izyz"],
-    ],
-)
-def test_euler_angles_round_trip(r: Rotation, sequence: str):
-    euler_angles = r.as_euler(sequence)
-    r_from_angles = Rotation.from_euler(euler_angles, sequence)
+@given(r=RotationStrategy, seq=EulerAngleSequence)
+def test_euler_angles_round_trip(r: Rotation, seq: str):
+    print(seq)
+    euler_angles = r.as_euler(seq)
+    r_from_angles = Rotation.from_euler(euler_angles, seq)
     assert r.almost_equal(r_from_angles, eps=1e-4)  # TODO: eps settings vs. numerical issues?
