@@ -331,7 +331,7 @@ class Rotation:
         if np.isclose(w, 1, rtol=0, atol=1e-12):
             axis = np.array([1, 0, 0], dtype=np.float64)
         else:
-            axis = self._q[1:] / np.sqrt(1 - w ** 2)
+            axis = self._q[1:] / np.sqrt(1 - w**2)
 
         return angle, axis
 
@@ -366,7 +366,7 @@ class Rotation:
         # This behaves numerically more stable than component-wise comparison.
         # See https://gamedev.stackexchange.com/a/75108 for more info.
         cosine_similarity = np.abs(np.dot(self._q, other.as_quaternion()))
-        return float(cosine_similarity) > 1.0 - eps ** 2
+        return float(cosine_similarity) > 1.0 - eps**2
 
     @staticmethod
     def _raise_if_not_expected_shape(a: np.ndarray, expected: Union[Tuple[int, ...], Set[Tuple[int, ...]]]) -> None:

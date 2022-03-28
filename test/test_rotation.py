@@ -351,7 +351,7 @@ def test_inverse(r: Rotation):
 
 @given(r=RotationStrategy, power=st.integers(0, 20))
 def test_positive_int_powers(r: Rotation, power: int):
-    r1 = r ** power
+    r1 = r**power
     r2 = r.identity()
     for _ in range(power):
         r2 @= r
@@ -360,21 +360,21 @@ def test_positive_int_powers(r: Rotation, power: int):
 
 @given(r=RotationStrategy, power=st.floats(-20, 20))
 def test_power_inverse_relation(r: Rotation, power: float):
-    r1 = (r ** power).inverse()
-    r2 = r ** -power
+    r1 = (r**power).inverse()
+    r2 = r**-power
     assert r1.almost_equal(r2)
 
 
 @given(power=st.floats(-20, 20))
 def test_identity_powers(power: float):
     ident = Rotation.identity()
-    assert ident.almost_equal(ident ** power)
+    assert ident.almost_equal(ident**power)
 
 
 @given(r=RotationStrategy, power=st.floats(-20, 20))
 def test_power_rotation_vector_relation(r: Rotation, power: float):
     r_vec = r.as_rotation_vector()
-    r1 = r ** power
+    r1 = r**power
     r2 = r.from_rotation_vector(power * r_vec)
     assert r1.almost_equal(r2)
 
@@ -414,7 +414,7 @@ def test_slerp_around_identity_gives_same_result_as_power(r: Rotation, t_range: 
     # over the input in the for-loop BOTH in the t_range and the slerp object
     slerp = Rotation.identity().slerp(r, t_range)
     for t, r_slerp in zip(t_range, slerp):
-        r_from_pow = r ** t
+        r_from_pow = r**t
         assert r_slerp.almost_equal(r_from_pow)
 
 
@@ -423,6 +423,6 @@ def test_slerp_values(r1: Rotation, r2: Rotation, t_range: List[float]):
     # note: use list as we need to iterate over the t_range multiple times
     slerp_lst = list(r1.slerp(r2, t_range))
     r_diff = r2 @ r1.inverse()
-    manual_slerp = [r_diff ** t @ r1 for t in t_range]
+    manual_slerp = [r_diff**t @ r1 for t in t_range]
     for r_slerp, r_manual in zip(slerp_lst, manual_slerp):
         assert r_slerp.almost_equal(r_manual)
