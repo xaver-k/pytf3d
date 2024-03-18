@@ -4,7 +4,6 @@
  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """
 
-
 from ._types import (
     ARRAY_LIKE_1D_T,
     ARRAY_LIKE_2D_T,

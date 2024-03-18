@@ -4,7 +4,6 @@
  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """
 
-
 from pytf3d.typing import HOMOGENEOUS_MATRIX_T, ROTATION_MATRIX_T
 
 import numpy as np
