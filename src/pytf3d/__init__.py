@@ -4,6 +4,5 @@
  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """
 
-
 from ._rotation import QUATERNION_TOLERANCE, QuaternionOrder, Rotation
 from ._version import __version__

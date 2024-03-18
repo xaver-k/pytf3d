@@ -4,7 +4,6 @@
  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """
 
-
 from hypothesis import assume, example, given, settings
 from pytest import mark, raises
 from pytf3d import QuaternionOrder, Rotation

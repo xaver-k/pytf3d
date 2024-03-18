@@ -6,7 +6,7 @@
 
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.4.0
+  rev: v4.5.0
   hooks:
   - id: trailing-whitespace
   - id: end-of-file-fixer
@@ -18,7 +18,7 @@ repos:
   - id: check-executables-have-shebangs
 
 - repo: https://github.com/Lucas-C/pre-commit-hooks
-  rev: v1.3.1
+  rev: v1.5.5
   hooks:
   - id: remove-crlf
   - id: forbid-tabs
@@ -27,14 +27,14 @@ repos:
     files: '.*\.py'
 
 - repo: https://github.com/psf/black
-  rev: 22.12.0
+  rev: 24.3.0
   hooks:
   - id: black
     language_version: python3
     # setup via pyproject.toml file
 
 - repo: https://github.com/PyCQA/isort
-  rev: "5.11.4"
+  rev: "5.13.2"
   hooks:
   - id: isort
     language: python
@@ -43,7 +43,7 @@ repos:
     # setup via pyproject.toml file
 
 - repo: https://github.com/pycqa/pylint
-  rev: v2.15.9
+  rev: v3.1.0
   hooks:
   - id: pylint
     language: python

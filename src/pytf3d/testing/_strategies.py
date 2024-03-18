@@ -4,7 +4,6 @@
  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """
 
-
 from hypothesis.extra.numpy import arrays
 from pytf3d import QUATERNION_TOLERANCE, Rotation
 from typing import Sequence

@@ -4,7 +4,6 @@
  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """
 
-
 from enum import auto, Enum, unique
 from pytf3d.typing import (
     ARRAY_LIKE_1D_T,
@@ -78,15 +77,13 @@ class Rotation:
         return "Rotation({:.8f} | {:.8f}, {:.8f}, {:.8f})".format(*self._q)
 
     @overload
-    def __matmul__(self, other: "Rotation") -> "Rotation":
-        ...
+    def __matmul__(self, other: "Rotation") -> "Rotation": ...
 
     # note: imprecise overload for now, is the best we can do for numpy <= 1.19
     @overload
     def __matmul__(
         self, other: Union[ARRAY_LIKE_1D_T, VECTOR_T, HOMOGENEOUS_VECTOR_T]
-    ) -> Union[VECTOR_T, HOMOGENEOUS_VECTOR_T]:
-        ...
+    ) -> Union[VECTOR_T, HOMOGENEOUS_VECTOR_T]: ...
 
     def __matmul__(
         self, other: Union["Rotation", ARRAY_LIKE_1D_T, VECTOR_T, HOMOGENEOUS_VECTOR_T]

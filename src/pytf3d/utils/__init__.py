@@ -4,5 +4,4 @@
  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 """
 
-
 from ._matrices import is_homogeneous_matrix, is_rotation_matrix
